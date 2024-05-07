@@ -1,5 +1,5 @@
 import flet as ft
-import requests
+import wget, easyocr
 
 def main(page: ft.Page):
 
@@ -18,16 +18,12 @@ def main(page: ft.Page):
     page.add(tb1, b, t)
 
 
-def fun_transcricao(entrada):
-    #reader = easyocr.Reader(['en'])
+def fun_transcricao():
+    reader = easyocr.Reader(['en'])
 
 
-    transcription_output = requests.get(tb1.value)
-    
-    with open(entrada, 'wb') as f:
-        f.write(transcription_output.content)
+    transcription_output = wget.download(tb1.value, 'C:/Users/vitor.6956/proj_py/athena/imagem.png')
 
-    #t.value = transcription_output
-
+    resultado = reader.readtext()    
 
 ft.app(target=main)
