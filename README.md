@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ## Documentação em Português para GitHub da Página OCR
 
 **Descrição:**
