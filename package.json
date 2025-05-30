@@ -1,14 +1,23 @@
 {
+<<<<<<< HEAD
   "name": "image-transcriber",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
+=======
+  "name": "meu-app-ocr",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+>>>>>>> 43800f64e7bc4b4abb829c678eb5c7d8c87d0ee8
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@heroicons/react": "^2.1.1",
     "axios": "^1.6.7",
     "next": "^14.1.0",
@@ -24,5 +33,24 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "14.1.0",
     "typescript": "^5.3.3"
+=======
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.9.0",
+    "next": "15.3.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "^0.34.2"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+>>>>>>> 43800f64e7bc4b4abb829c678eb5c7d8c87d0ee8
   }
 }
