@@ -1,56 +1,40 @@
 {
-<<<<<<< HEAD
-  "name": "image-transcriber",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-=======
   "name": "meu-app-ocr",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
->>>>>>> 43800f64e7bc4b4abb829c678eb5c7d8c87d0ee8
+    "dev": "next dev",
+    "dev:all": "powershell -ExecutionPolicy Bypass -File start-dev.ps1",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "@heroicons/react": "^2.1.1",
-    "axios": "^1.6.7",
-    "next": "^14.1.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-dropzone": "^14.2.3",
-    "replicate": "^1.0.1"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "eslint": "^8.56.0",
-    "eslint-config-next": "14.1.0",
-    "typescript": "^5.3.3"
-=======
     "@google/generative-ai": "^0.24.1",
+    "@heroicons/react": "^2.1.1",
+    "@techstark/opencv-js": "^4.10.0-release.1",
+    "@xenova/transformers": "^2.17.2",
     "axios": "^1.9.0",
     "next": "15.3.2",
+    "node-llama-cpp": "^3.8.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-dropzone": "^14.2.3",
+    "replicate": "^1.0.1",
     "sharp": "^0.34.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.1.8",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.2",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
-    "tailwindcss": "^4",
+    "postcss": "^8.5.4",
+    "tailwindcss": "^4.1.8",
     "typescript": "^5"
->>>>>>> 43800f64e7bc4b4abb829c678eb5c7d8c87d0ee8
   }
 }

@@ -9,6 +9,20 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '50mb',
+      allowedOrigins: ['*'],
+    },
+  },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      encoding: false,
+    };
+    
+    return config;
+  },
 }
 
 module.exports = nextConfig 

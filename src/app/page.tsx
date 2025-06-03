@@ -1,350 +1,118 @@
-<<<<<<< HEAD
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { PhotoIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 
 export default function Home() {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [analysis, setAnalysis] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const onDrop = async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Converter a imagem para base64
+    if (acceptedFiles.length > 0) {
+      const file = acceptedFiles[0];
       const reader = new FileReader();
+
       reader.onload = async (e) => {
-        const base64Image = e.target?.result as string;
-        setImageUrl(base64Image);
-
-        try {
-          const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              imageBase64: base64Image.split(',')[1],
-            }),
-          });
-
-          const data = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(data.error || 'Erro ao analisar a imagem');
-          }
-
-          setAnalysis(data.analysis);
-        } catch (error) {
-          setError(error instanceof Error ? error.message : 'Erro ao processar a imagem');
-        } finally {
-          setLoading(false);
+        if (e.target?.result) {
+          const base64String = e.target.result.toString().split(',')[1];
+          setImageUrl(URL.createObjectURL(file));
+          await analyzeImage(base64String);
         }
       };
 
       reader.readAsDataURL(file);
-    } catch (error) {
-      setError('Erro ao processar o arquivo');
-      setLoading(false);
     }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif']
+      'image/*': ['.jpeg', '.jpg', '.png']
     },
-    maxFiles: 1,
+    maxSize: 5242880 // 5MB
   });
 
+  const analyzeImage = async (imageBase64: string) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageBase64 }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao analisar a imagem');
+      }
+
+      setAnalysis(data.analysis);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao processar a imagem');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <main className="container">
-      <h1 className="title">Transcritor de Imagens</h1>
-      
-      <div className="grid">
-        <div>
-          <div
-            {...getRootProps()}
-            className={`dropzone ${isDragActive ? 'active' : ''}`}
-          >
-            <input {...getInputProps()} />
-            <PhotoIcon className="icon" />
-            <p>
-              {isDragActive
-                ? 'Solte a imagem aqui...'
-                : 'Arraste uma imagem ou clique para selecionar'}
-            </p>
+    <main className="min-h-screen p-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <h1 className="text-4xl font-bold text-center mb-8">
+          Análise de Imagens com IA
+        </h1>
+
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+            ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
+        >
+          <input {...getInputProps()} />
+          {isDragActive ? (
+            <p>Solte a imagem aqui...</p>
+          ) : (
+            <p>Arraste uma imagem aqui, ou clique para selecionar</p>
+          )}
+        </div>
+
+        {imageUrl && (
+          <div className="relative w-full h-[400px] max-w-3xl mx-auto">
+            <Image
+              src={imageUrl}
+              alt="Imagem carregada"
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              priority
+              className="object-contain rounded-lg"
+            />
           </div>
+        )}
 
-          {imageUrl && (
-            <div className="image-container">
-              <img
-                src={imageUrl}
-                alt="Imagem carregada"
-              />
-            </div>
-          )}
-        </div>
+        {isLoading && (
+          <div className="text-center">
+            <p>Analisando imagem...</p>
+          </div>
+        )}
 
-        <div className="analysis-panel">
-          <h2 className="analysis-title">Análise da Imagem</h2>
-          
-          {loading && (
-            <div className="loading">
-              <div className="spinner"></div>
-              <span>Analisando imagem...</span>
-            </div>
-          )}
+        {error && (
+          <div className="p-4 bg-red-50 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
 
-          {error && (
-            <div className="error">
-              {error}
-            </div>
-          )}
-
-          {analysis && !loading && (
-            <div className="analysis-content">
-              {analysis}
-            </div>
-          )}
-
-          {!analysis && !loading && !error && (
-            <p className="text-center">
-              Carregue uma imagem para ver a análise
-            </p>
-          )}
-        </div>
+        {analysis && (
+          <div className="p-6 bg-white rounded-lg shadow">
+            <h2 className="text-2xl font-semibold mb-4">Análise da Imagem</h2>
+            <div className="whitespace-pre-wrap">{analysis}</div>
+          </div>
+        )}
       </div>
     </main>
   );
 }
-=======
-'use client'; // This directive is necessary for client-side components in Next.js App Router
-
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
-import axios from 'axios';
-
-// Define the interface for the API response.
-// 'colors' is now optional, as an error response might not have colors.
-interface ColorResponse {
-  colors?: string[];
-  error?: string;
-}
-
-// ColorDetector component to display extracted colors from an image URL
-function ColorDetector({ imageUrl }: { imageUrl: string }) {
-  const [colors, setColors] = useState<string[]>([]);
-  const [isLoadingColors, setIsLoadingColors] = useState<boolean>(false);
-  const [colorError, setColorError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchColors = async () => {
-      // Only fetch if imageUrl is valid
-      if (!imageUrl) {
-        setColors([]);
-        setColorError(null); // Clear any previous errors
-        return;
-      }
-
-      setIsLoadingColors(true);
-      setColorError(null);
-      setColors([]); // Clear previous colors before new fetch
-
-      try {
-        // Correct API route path for App Router: /api/extract-colors-sharp
-        const response = await axios.get<ColorResponse>(`/api/extract-colors-gemini?imageUrl=${encodeURIComponent(imageUrl)}`);
-
-        // Check if colors exist in the response data
-        if (response.data.colors && response.data.colors.length > 0) {
-          setColors(response.data.colors);
-        } else if (response.data.error) {
-          setColorError(response.data.error);
-        } else {
-          setColorError("Erro ao obter cores do servidor: Nenhuma cor ou erro específico recebido.");
-        }
-      } catch (error: any) {
-        console.error("Erro ao buscar cores do servidor:", error);
-        // Provide a more user-friendly error message
-        if (axios.isAxiosError(error) && error.response) {
-          setColorError(`Erro do servidor (${error.response.status}): ${error.response.data?.error || "Falha na comunicação."}`);
-        } else {
-          setColorError("Erro ao comunicar com o servidor para detectar cores.");
-        }
-      } finally {
-        setIsLoadingColors(false);
-      }
-    };
-
-    fetchColors(); // Call fetchColors on imageUrl change
-  }, [imageUrl]); // Dependency array: re-run effect when imageUrl changes
-
-  return (
-    <div>
-      <h2>Cores Detectadas (Servidor - Sharp):</h2>
-      {isLoadingColors ? (
-        <p>Carregando cores...</p>
-      ) : colorError ? (
-        <p className="text-red-500">{colorError}</p>
-      ) : colors.length > 0 ? (
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {colors.map((hex) => (
-            <div
-              key={hex} // Use hex as key, assuming unique colors
-              style={{
-                width: '50px',
-                height: '50px',
-                backgroundColor: hex,
-                borderRadius: '5px',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-              }}
-            />
-          ))}
-        </div>
-      ) : (
-        // Only show "Nenhuma cor detectada" if not loading and no error, and imageUrl is provided
-        imageUrl && <p>Nenhuma cor detectada.</p>
-      )}
-    </div>
-  );
-}
-
-// Main Home component
-export default function Home() {
-  const [imageUrlInput, setImageUrlInput] = useState<string>('');
-  const [currentImageUrl, setCurrentImageUrl] = useState<string>(''); // State to trigger ColorDetector
-  const [textoResultado, setTextoResultado] = useState<string>('');
-  const [carregandoTexto, setCarregandoTexto] = useState<boolean>(false);
-  const [erroTexto, setErroTexto] = useState<string>('');
-
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setImageUrlInput(event.target.value);
-  };
-
-  const handleClick = async () => {
-    if (!imageUrlInput.trim()) {
-      setErroTexto('Por favor, insira a URL da imagem.');
-      setTextoResultado(''); // Clear previous results
-      setCurrentImageUrl(''); // Clear image for ColorDetector
-      return;
-    }
-
-    // Set the image URL for ColorDetector to react to
-    setCurrentImageUrl(imageUrlInput.trim());
-
-    setCarregandoTexto(true);
-    setTextoResultado('');
-    setErroTexto('');
-
-    try {
-      const apiUrl = `https://api.ocr.space/parse/imageurl?apikey=helloworld&url=${encodeURIComponent(
-        imageUrlInput
-      )}&detectOrientation=true&OCREngine=2`;
-
-      const response = await axios.get(apiUrl);
-
-      if (response.data && response.data.ParsedResults && response.data.ParsedResults.length > 0) {
-        const textoExtraido = response.data.ParsedResults[0].ParsedText;
-        setTextoResultado(textoExtraido);
-      } else {
-        setErroTexto('Não foi possível encontrar texto na resposta da OCR.space.');
-      }
-    } catch (error: any) {
-      console.error('Erro na requisição OCR:', error);
-      // More specific error message for OCR
-      if (axios.isAxiosError(error) && error.response) {
-        setErroTexto(`Erro na OCR.space (${error.response.status}): ${error.response.data?.ErrorMessage || "Falha na comunicação."}`);
-      } else {
-        setErroTexto('Ocorreu um erro ao buscar os dados do OCR.space.');
-      }
-    } finally {
-      setCarregandoTexto(false);
-    }
-  };
-
-  return (
-    <div className="grid grid-rows-[auto_auto_auto_1fr_auto] items-center justify-items-center min-h-screen p-8 pb-20 gap-8 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <header className="row-start-1">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={120}
-          height={25}
-          priority
-        />
-      </header>
-
-      <main className="flex flex-col gap-8 row-start-2 items-center w-full max-w-md">
-        <input
-          type="text"
-          className="w-full rounded-md border border-gray-300 dark:border-gray-700 py-2 px-3 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-500"
-          placeholder="Insira a URL da imagem"
-          value={imageUrlInput}
-          onChange={handleInputChange}
-        />
-        <button
-          className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-          onClick={handleClick}
-          disabled={carregandoTexto}
-        >
-          {carregandoTexto ? 'Carregando...' : 'Transcrever URL'}
-        </button>
-
-        {erroTexto && <p className="text-red-500">{erroTexto}</p>}
-
-        {textoResultado && (
-          <div className="bg-black/[.05] dark:bg-white/[.06] rounded-md p-4 w-full">
-            <h2 className="font-semibold mb-2">Texto Extraído:</h2>
-            <pre className="text-sm font-[family-name:var(--font-geist-mono)] whitespace-pre-wrap break-words">
-              {textoResultado}
-            </pre>
-          </div>
-        )}
-
-        {/* Pass currentImageUrl to ColorDetector so it updates only when the button is clicked */}
-        {currentImageUrl && (
-          <div className="mt-4 w-full">
-            <ColorDetector imageUrl={currentImageUrl} />
-          </div>
-        )}
-      </main>
-
-      <footer className="row-start-5 flex gap-4 flex-wrap items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-        <a
-          className="hover:underline hover:underline-offset-2"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn
-        </a>
-        <a
-          className="hover:underline hover:underline-offset-2"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Examples
-        </a>
-        <a
-          className="hover:underline hover:underline-offset-2"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Go to nextjs.org
-        </a>
-      </footer>
-    </div>
-  );
-}
->>>>>>> 43800f64e7bc4b4abb829c678eb5c7d8c87d0ee8

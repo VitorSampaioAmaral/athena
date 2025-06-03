@@ -1,4 +1,3 @@
-
 ## Documentação em Português para GitHub da Página OCR
 
 **Descrição:**
@@ -72,10 +71,30 @@ The page is designed to be accessible to people with blindness or low vision. Th
 4. **Access Extracted Text:**
     * **On-Screen:** The extracted text will be displayed on the screen.
     * **Voice Narration:** The extracted text will be narrated by your screen reader.
-    * **Libras Captions:** Instructions and important
-=======
->>>>>>> 43800f64e7bc4b4abb829c678eb5c7d8c87d0ee8
+    * **Libras Captions:** Instructions and important messages will be captioned in Libras.
+
+**Observations:**
+
+* The accuracy of OCR may vary depending on the image quality and the complexity of the text.
+* The page is still under development and new accessibility features will be added in the future.
+
+**We hope this tool is useful for people with blindness or low vision!**
+
+**For more information:**
+
+* About OCR [https://es.wiktionary.org/wiki/removido](https://es.wiktionary.org/wiki/removido)
+* Web Accessibility [https://es.wiktionary.org/wiki/removido](https://es.wiktionary.org/wiki/removido)
+* Libras [https://es.wiktionary.org/wiki/removido](https://es.wiktionary.org/wiki/removido)
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Configuração
+
+1. Primeiro, crie uma conta no [Replicate](https://replicate.com) e obtenha sua chave de API
+2. Crie um arquivo `.env.local` na raiz do projeto e adicione sua chave:
+```bash
+REPLICATE_API_TOKEN=r8_seu_token_aqui
+```
 
 ## Getting Started
 
