@@ -208,3 +208,5 @@ next-env.d.ts
 =======
 >>>>>>> d390602 (Initial commit from Create Next App)
 >>>>>>> 43800f64e7bc4b4abb829c678eb5c7d8c87d0ee8
+
+/src/generated/prisma
