@@ -20,13 +20,15 @@ interface AnalysisResponse {
 export function ImageAnalysis({ imageData }: { imageData: string }) {
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { startProgress, updateProgress } = useProgress();
+  const { progress, startProgress, updateProgress } = useProgress();
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
     const analyzeImage = async () => {
       try {
         startProgress();
+        updateProgress(10); // Iniciando análise
+
         const response = await fetch('/api/analyze', {
           method: 'POST',
           headers: {
@@ -35,6 +37,8 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
           body: JSON.stringify({ image: imageData }),
         });
 
+        updateProgress(50); // Análise em andamento
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Erro ao analisar imagem');
@@ -42,7 +46,7 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
 
         const data = await response.json();
         setResult(data);
-        updateProgress(100);
+        updateProgress(100); // Análise concluída
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao analisar imagem');
         updateProgress(100);
@@ -54,11 +58,34 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
     }
   }, [imageData, isAuthenticated, user]);
 
+  if (!isAuthenticated || !user) {
+    return (
+      <div className={styles.errorContainer}>
+        <h3>Acesso Restrito</h3>
+        <p>Você precisa estar logado para analisar imagens.</p>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className={styles.errorContainer}>
         <h3>Erro na Análise</h3>
         <p>{error}</p>
+      </div>
+    );
+  }
+
+  if (progress < 100 && progress > 0) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.progressBar}>
+          <div 
+            className={styles.progressFill} 
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <p>Analisando imagem... {progress}%</p>
       </div>
     );
   }

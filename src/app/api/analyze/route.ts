@@ -5,9 +5,18 @@ import { pipeline } from '@xenova/transformers';
 import { performance } from 'perf_hooks';
 import crypto from 'crypto';
 import { broadcastProgress } from '../progress/route';
+import path from 'path';
+
+// Tipos para análise
+type AnalysisStatus = 'started' | 'completed' | 'error' | 'hit';
+
+interface CacheEntry {
+    result: string;
+    timestamp: number;
+}
 
 // Cache para armazenar resultados de análises similares
-const analysisCache = new Map<string, { result: string; timestamp: number }>();
+const analysisCache = new Map<string, CacheEntry>();
 const MAX_CACHE_AGE = 24 * 60 * 60 * 1000; // 24 horas em milissegundos
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB em bytes
 
@@ -21,6 +30,9 @@ Nunca mencione filmes, cinema ou outros temas não relacionados à imagem.
 Analise o seguinte conteúdo:
 
 `;
+
+// Cache para o modelo
+let detector: any = null;
 
 // Configuração do ambiente ONNX Runtime
 process.env.ONNXRUNTIME_LOG_LEVEL = '3'; // 3 = ERROR, ignora warnings
@@ -36,16 +48,16 @@ interface AnalysisLog {
 
 const analysisLogs: AnalysisLog[] = [];
 
-function logAnalysis(stage: string, status: AnalysisLog['status'], message: string, details?: any) {
-  const log: AnalysisLog = {
-    timestamp: Date.now(),
-    stage,
-    status,
-    message,
-    details
-  };
-  analysisLogs.push(log);
-  console.log(`[${new Date(log.timestamp).toISOString()}] ${stage}: ${message}`);
+function logAnalysis(stage: string, status: AnalysisStatus, message: string, data?: any) {
+    const log = {
+        stage,
+        status,
+        message,
+        data,
+        timestamp: Date.now()
+    };
+    console.log(`[${new Date(log.timestamp).toISOString()}] ${stage}: ${message}`);
+    broadcastProgress(log);
 }
 
 // --- Funções de Validação e Tradução ---
@@ -740,139 +752,88 @@ interface ImageElement {
     description: string;
     position?: string;
     coverage?: string;
+    confidence?: number;
 }
 
 async function detectElements(imageBuffer: Buffer): Promise<string> {
     try {
-        // Converte o buffer para base64
-        const base64Image = imageBuffer.toString('base64');
+        logAnalysis('detectElements', 'started', 'Iniciando detecção de elementos');
 
-        // Analisa a imagem usando sharp para obter dimensões e metadados
-        const { width, height, channels, format } = await sharp(imageBuffer).metadata();
+        // Processa a imagem com Sharp para análise
+        const metadata = await sharp(imageBuffer).metadata();
+        const { width = 0, height = 0 } = metadata;
 
-        // Lista para armazenar elementos detectados
-        const elements: ImageElement[] = [];
+        // Carrega o modelo de classificação de imagens (mais simples)
+        const classifier = await pipeline('image-classification', 'Xenova/mobilenet-v2');
+        logAnalysis('detectElements', 'completed', 'Modelo carregado');
 
-        // Analisa dimensões e formato
-        elements.push({
-            type: 'dimensões',
-            description: `Imagem ${format?.toUpperCase()} de ${width}x${height} pixels`,
-            position: 'global'
-        });
+        // Processa a imagem
+        const processedImage = await sharp(imageBuffer)
+            .resize(224, 224, { fit: 'inside' })
+            .toBuffer();
+        
+        const base64Image = `data:image/jpeg;base64,${processedImage.toString('base64')}`;
 
-        // Analisa canais de cor
-        if (channels === 1) {
-            elements.push({
-                type: 'cor',
-                description: 'Imagem em escala de cinza (pode dificultar a leitura para alguns usuários)',
-                position: 'global'
-            });
-        } else if (channels === 3) {
-            elements.push({
-                type: 'cor',
-                description: 'Imagem colorida (RGB)',
-                position: 'global'
-            });
-        } else if (channels === 4) {
-            elements.push({
-                type: 'cor',
-                description: 'Imagem colorida com transparência (RGBA)',
-                position: 'global'
-            });
-        }
+        // Classifica a imagem
+        const predictions = await classifier(base64Image);
 
-        // Analisa regiões da imagem usando sharp
-        const { data, info } = await sharp(imageBuffer)
-            .raw()
-            .toBuffer({ resolveWithObject: true });
+        // Filtra as previsões com confiança maior que 20%
+        const significantPredictions = predictions.filter((p: any) => p.score > 0.2);
 
-        // Divide a imagem em regiões para análise
-        const regions = {
-            top: { start: 0, end: Math.floor(height / 3), name: 'superior' },
-            middle: { start: Math.floor(height / 3), end: Math.floor(2 * height / 3), name: 'central' },
-            bottom: { start: Math.floor(2 * height / 3), end: height, name: 'inferior' }
+        // Traduz as categorias para português
+        const translations: { [key: string]: string } = {
+            'person': 'pessoa',
+            'people': 'pessoas',
+            'dog': 'cachorro',
+            'cat': 'gato',
+            'bird': 'pássaro',
+            'car': 'carro',
+            'building': 'prédio',
+            'house': 'casa',
+            'tree': 'árvore',
+            'flower': 'flor',
+            'food': 'comida',
+            'book': 'livro',
+            'computer': 'computador',
+            'phone': 'telefone',
+            'table': 'mesa',
+            'chair': 'cadeira'
         };
 
-        // Analisa cada região
-        for (const [regionKey, region] of Object.entries(regions)) {
-            let totalPixels = 0;
-            let brightPixels = 0;
-            let darkPixels = 0;
-            let mediumPixels = 0;
+        // Gera a descrição
+        let description = 'Na imagem, identifiquei: ';
+        description += significantPredictions
+            .map((p: any) => {
+                const confidence = Math.round(p.score * 100);
+                const label = translations[p.label.toLowerCase()] || p.label;
+                return `${label} (${confidence}% de confiança)`;
+            })
+            .join(', ');
 
-            // Analisa pixels na região
-            for (let y = region.start; y < region.end; y++) {
-                for (let x = 0; x < width; x++) {
-                    const idx = (y * width + x) * channels;
-                    const r = data[idx] || 0;
-                    const g = data[idx + 1] || 0;
-                    const b = data[idx + 2] || 0;
-                    
-                    const brightness = (r + g + b) / 3;
-                    totalPixels++;
-                    
-                    if (brightness > 200) brightPixels++;
-                    else if (brightness < 50) darkPixels++;
-                    else mediumPixels++;
-                }
-            }
+        // Adiciona informações sobre o tamanho da imagem
+        description += `\n\nA imagem tem dimensões de ${width}x${height} pixels. `;
 
-            // Calcula porcentagens
-            const brightPercentage = (brightPixels / totalPixels) * 100;
-            const darkPercentage = (darkPixels / totalPixels) * 100;
-            const mediumPercentage = (mediumPixels / totalPixels) * 100;
+        // Adiciona informações sobre a orientação
+        if (width && height) {
+            const aspectRatio = width / height;
+            let orientation = '';
+            if (aspectRatio > 1.2) orientation = 'horizontal (paisagem)';
+            else if (aspectRatio < 0.8) orientation = 'vertical (retrato)';
+            else orientation = 'quadrada';
 
-            // Avalia o contraste
-            if (brightPercentage > 20 && darkPercentage > 40) {
-                elements.push({
-                    type: 'contraste',
-                    description: `Bom contraste na região ${region.name}`,
-                    position: region.name
-                });
-            }
-
-            // Detecta elementos baseado nas características da região
-            if (brightPercentage > 20) {
-                elements.push({
-                    type: 'texto',
-                    description: `Texto em cor clara na região ${region.name}`,
-                    position: region.name,
-                    coverage: `${brightPercentage.toFixed(1)}% da região`
-                });
-            }
-
-            if (darkPercentage > 60) {
-                elements.push({
-                    type: 'fundo',
-                    description: `Fundo escuro na região ${region.name}`,
-                    position: region.name,
-                    coverage: `${darkPercentage.toFixed(1)}%`
-                });
-            }
-
-            // Avalia legibilidade
-            const contrastRatio = brightPercentage / (darkPercentage + 1);
-            if (contrastRatio > 0.5) {
-                elements.push({
-                    type: 'legibilidade',
-                    description: `Boa legibilidade na região ${region.name} devido ao alto contraste`,
-                    position: region.name
-                });
-            }
+            description += `A imagem está em orientação ${orientation}.`;
         }
 
-        // Formata a saída de forma mais acessível
-        return `Elementos visuais detectados:\n${elements.map(e => {
-            let desc = e.description;
-            if (e.coverage) {
-                desc += ` ocupando ${e.coverage}`;
-            }
-            return `- ${desc}`;
-        }).join('\n')}`;
+        logAnalysis('detectElements', 'completed', 'Elementos detectados com sucesso', {
+            predictionsCount: predictions.length,
+            significantCount: significantPredictions.length
+        });
 
+        return description;
     } catch (error) {
         console.error('Erro ao detectar elementos:', error);
-        return 'Erro ao analisar elementos da imagem.';
+        logAnalysis('detectElements', 'error', 'Erro ao detectar elementos', { error });
+        throw error;
     }
 }
 
@@ -1012,193 +973,75 @@ function formatError(error: any): string {
     return String(error);
 }
 
-// --- Função principal POST ---
+// Função para gerar hash de uma imagem
+function generateImageHash(buffer: Buffer): string {
+    return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
+// Função principal de análise
 export async function POST(request: Request) {
-    const reqStartTime = performance.now();
-    logAnalysis('análise', 'started', 'Iniciando processo de análise');
-    const errors: string[] = [];
-
+    const startTime = performance.now();
+    
     try {
-        const { image } = await request.json();
-
-        if (!image) {
-            logAnalysis('validação', 'error', 'Nenhuma imagem fornecida');
-            return NextResponse.json(
-                { error: 'Nenhuma imagem fornecida' },
-                { status: 400 }
-            );
+        // Verifica se o request é multipart/form-data
+        if (!request.headers.get('content-type')?.includes('multipart/form-data')) {
+            return NextResponse.json({ error: 'Tipo de conteúdo inválido' }, { status: 400 });
         }
 
-        // Converte base64 para buffer
-        const imageBuffer = Buffer.from(image.split(',')[1], 'base64');
-        logAnalysis('preparação', 'completed', 'Imagem convertida para buffer');
+        // Obtém o FormData do request
+        const formData = await request.formData();
+        const file = formData.get('file') as File;
 
-        // Gera uma chave única para o cache
-        const cacheKey = crypto.createHash('md5').update(image).digest('hex');
+        if (!file) {
+            return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 });
+        }
 
-        // Verifica se já existe no cache
-        const cachedResult = analysisCache.get(cacheKey);
-        if (cachedResult) {
-            logAnalysis('cache', 'completed', 'Resultado encontrado no cache', {
-                cacheAge: Date.now() - cachedResult.timestamp
+        // Verifica o tamanho do arquivo
+        if (file.size > MAX_IMAGE_SIZE) {
+            return NextResponse.json({ 
+                error: 'Arquivo muito grande. O tamanho máximo permitido é 5MB.' 
+            }, { status: 400 });
+        }
+
+        // Converte o arquivo para Buffer
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        // Gera hash da imagem
+        const imageHash = generateImageHash(buffer);
+
+        // Verifica cache
+        const cachedResult = analysisCache.get(imageHash);
+        if (cachedResult && (Date.now() - cachedResult.timestamp) < MAX_CACHE_AGE) {
+            const endTime = performance.now();
+            logAnalysis('cache', 'hit', 'Resultado encontrado no cache', {
+                processingTime: endTime - startTime
             });
-            return NextResponse.json({
-                analysis: cachedResult.result,
-                cached: true,
-                logs: analysisLogs
-            });
+            return NextResponse.json({ description: cachedResult.result });
         }
 
-        // Inicia a detecção de texto
-        broadcastProgress({
-            stage: 'text',
-            status: 'started',
-            message: 'Iniciando detecção de texto...',
-            progress: 0
+        // Detecta elementos na imagem
+        const description = await detectElements(buffer);
+
+        // Atualiza cache
+        analysisCache.set(imageHash, { 
+            result: description, 
+            timestamp: Date.now() 
         });
 
-        // Simula o progresso da detecção de texto
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        broadcastProgress({
-            stage: 'text',
-            status: 'loading',
-            message: 'Processando texto...',
-            progress: 50
+        const endTime = performance.now();
+        logAnalysis('analysis', 'completed', 'Análise concluída com sucesso', {
+            processingTime: endTime - startTime
         });
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        broadcastProgress({
-            stage: 'text',
-            status: 'completed',
-            message: 'Texto detectado com sucesso',
-            progress: 100
-        });
-
-        // Detecta o texto na imagem
-        logAnalysis('OCR', 'started', 'Iniciando detecção de texto');
-        let detectedText = '';
-        try {
-            detectedText = await detectText(imageBuffer);
-            logAnalysis('OCR', 'completed', 'Texto detectado com sucesso');
-        } catch (error) {
-            const errorMsg = formatError(error);
-            errors.push(`Erro na detecção de texto: ${errorMsg}`);
-            logAnalysis('OCR', 'error', 'Erro na detecção de texto', { error: errorMsg });
-        }
-
-        // Análises paralelas de cores e elementos
-        logAnalysis('análise-paralela', 'started', 'Iniciando análises de cores e elementos');
-        let colorResult = '';
-        let elementResult = '';
-
-        try {
-            colorResult = await analyzeColors(imageBuffer);
-            logAnalysis('cores', 'completed', 'Análise de cores concluída');
-        } catch (error) {
-            const errorMsg = formatError(error);
-            errors.push(`Erro na análise de cores: ${errorMsg}`);
-            logAnalysis('cores', 'error', 'Erro na análise de cores', { error: errorMsg });
-        }
-
-        try {
-            elementResult = await detectElements(imageBuffer);
-            logAnalysis('elementos', 'completed', 'Análise de elementos concluída');
-        } catch (error) {
-            const errorMsg = formatError(error);
-            errors.push(`Erro na detecção de elementos: ${errorMsg}`);
-            logAnalysis('elementos', 'error', 'Erro na detecção de elementos', { error: errorMsg });
-        }
-
-        // Extrai os elementos da análise
-        const elements = elementResult
-            .split('\n')
-            .filter(line => line.startsWith('- '))
-            .map(line => line.substring(2));
-
-        let interpretation = '';
-        try {
-            interpretation = await interpretContent(detectedText, elements);
-            logAnalysis('interpretação', 'completed', 'Interpretação concluída com sucesso');
-        } catch (error) {
-            const errorMsg = formatError(error);
-            errors.push(`Erro na interpretação: ${errorMsg}`);
-            logAnalysis('interpretação', 'error', 'Erro na interpretação', { error: errorMsg });
-        }
-
-        const analysis = `
-<div class="analysis-container">
-  <h2 class="analysis-title">Análise da Imagem</h2>
-
-  ${errors.length > 0 ? `
-  <div class="errors-section">
-    <h3>Avisos durante o processamento:</h3>
-    <ul class="error-list">
-      ${errors.map(error => `<li class="error-item">${error}</li>`).join('')}
-    </ul>
-  </div>
-  ` : ''}
-
-  <div class="transcription-text">
-    <h3>Texto Detectado</h3>
-    ${detectedText || 'Nenhum texto detectado'}
-  </div>
-
-  <div class="color-analysis">
-    <h3>Análise de Cores</h3>
-    ${colorResult || 'Não foi possível analisar as cores'}
-  </div>
-
-  <div class="elements-analysis">
-    <h3>Elementos Visuais</h3>
-    ${elementResult || 'Não foi possível detectar elementos'}
-  </div>
-
-  <div class="content-interpretation">
-    <h3>Interpretação do Conteúdo</h3>
-    ${interpretation || 'Não foi possível gerar interpretação'}
-  </div>
-
-  <div class="summary">
-    <h3>Resumo Final</h3>
-    <p>Esta análise combinou reconhecimento de texto (OCR), análise de cores e identificação de elementos visuais para fornecer uma compreensão abrangente da imagem.</p>
-    ${errors.length > 0 ? `<p class="warning">Alguns erros ocorreram durante o processamento. Verifique os avisos acima.</p>` : ''}
-  </div>
-</div>`;
-
-        // Armazena o resultado no cache
-        analysisCache.set(cacheKey, {
-            result: analysis,
-            timestamp: Date.now()
-        });
-        
-        logAnalysis('análise', 'completed', 'Análise concluída com sucesso', {
-            processingTime: (performance.now() - reqStartTime).toFixed(2) + 'ms',
-            errorsCount: errors.length
-        });
-
-        return NextResponse.json({
-            analysis,
-            errors,
-            logs: analysisLogs,
-            debug: {
-                textDetected: detectedText.length > 0,
-                elementsCount: elements.length,
-                hasInterpretation: interpretation.length > 50,
-                processingTime: (performance.now() - reqStartTime).toFixed(2),
-                errorsCount: errors.length
-            }
-        });
+        return NextResponse.json({ description });
 
     } catch (error) {
-        const errorMsg = formatError(error);
-        logAnalysis('análise', 'error', 'Erro fatal durante análise', { error: errorMsg });
-        return NextResponse.json(
-            { 
-                error: 'Erro ao processar imagem',
-                details: errorMsg,
-                logs: analysisLogs
-            },
-            { status: 500 }
-        );
+        console.error('Erro durante o processamento:', error);
+        logAnalysis('analysis', 'error', 'Erro durante o processamento', { error });
+        
+        return NextResponse.json({ 
+            error: 'Erro ao processar a imagem. Por favor, tente novamente.' 
+        }, { status: 500 });
     }
 }
