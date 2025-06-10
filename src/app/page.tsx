@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,6 +10,8 @@ import { AnalysisProgress } from '@/components/AnalysisProgress';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useSession } from 'next-auth/react';
 import { AuthModal } from '@/components/AuthModal';
+import { useRouter } from 'next/navigation';
+import ImageUploader from '@/components/ImageUploader';
 
 interface AnalysisStep {
   id: string;
@@ -26,6 +28,7 @@ const initialSteps: AnalysisStep[] = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const { isAuthenticated, loading } = useAuth();
   const { data: session, status } = useSession();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -40,6 +43,12 @@ export default function Home() {
   const [result, setResult] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [shouldSave, setShouldSave] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, loading, router]);
 
   const onDrop = async (acceptedFiles: File[]) => {
     if (!isAuthenticated) {
@@ -364,76 +373,31 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-white border-t-transparent"></div>
+          <p className="text-lg text-white">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-white">Você precisa estar logado para acessar esta página.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-secondary-900 to-secondary-950 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-primary-600">
-            Análise de Imagens
-          </h1>
-          <p className="text-lg text-secondary-400">
-            Faça upload de uma imagem para análise detalhada
-          </p>
-          {!session && (
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="mt-4 text-primary-400 hover:text-primary-300 font-medium"
-            >
-              Faça login para salvar suas análises
-            </button>
-          )}
-        </header>
-
-        <ImageUpload
-          onImageSelect={handleImageSelect}
-          isLoading={isLoading}
-          progress={uploadProgress}
-        />
-
-        {isAnalyzing && (
-          <AnalysisProgress
-            steps={steps}
-            onStepUpdate={handleStepUpdate}
-          />
-        )}
-
-        {result && (
-          <div className="mt-8 space-y-4">
-            <div dangerouslySetInnerHTML={{ __html: result }} />
-            
-            <button
-              onClick={handleSaveAnalysis}
-              className="w-full py-3 px-4 bg-primary-600 text-white rounded-lg
-                       hover:bg-primary-700 transition-colors duration-200
-                       flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                      d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-              </svg>
-              {session ? 'Salvar Análise' : 'Fazer Login para Salvar'}
-            </button>
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-8 p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-400">
-            {error}
-          </div>
-        )}
-
-        <AuthModal
-          isOpen={isAuthModalOpen}
-          onClose={() => setIsAuthModalOpen(false)}
-          onSuccess={handleAuthSuccess}
-        />
-      </div>
+    <main className="container mx-auto px-4 py-8">
+      <h1 className="mb-8 text-center text-4xl font-bold">
+        Análise de Imagens com IA
+      </h1>
+      <ImageUploader />
     </main>
   );
 }

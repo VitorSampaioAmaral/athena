@@ -31,10 +31,11 @@
     "puter": "^1.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-dropzone": "^14.2.3",
+    "react-dropzone": "^14.3.8",
     "replicate": "^1.0.1",
     "sharp": "^0.34.2",
-    "tailwind-merge": "^3.3.0"
+    "tailwind-merge": "^3.3.0",
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

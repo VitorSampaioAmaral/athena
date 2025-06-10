@@ -1,42 +1,68 @@
 import { NextResponse } from 'next/server'
-import { authenticateUser } from '@/lib/auth'
+import jwt from 'jsonwebtoken'
+import bcrypt from 'bcryptjs'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { email, password } = body
+    const { email, password } = await request.json()
 
-    // Validações básicas
-    if (!email || !password) {
+    // Busca o usuário no banco de dados
+    const user = await prisma.user.findUnique({
+      where: { email }
+    })
+
+    // Se não encontrar o usuário ou a senha estiver incorreta
+    if (!user) {
       return NextResponse.json(
-        { error: 'E-mail e senha são obrigatórios' },
-        { status: 400 }
+        { error: 'Email ou senha inválidos' },
+        { status: 401 }
       )
     }
 
-    const result = await authenticateUser(email, password)
+    // Verifica a senha
+    const isValidPassword = await bcrypt.compare(password, user.password)
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { error: 'Email ou senha inválidos' },
+        { status: 401 }
+      )
+    }
 
-    // Define o cookie com o token JWT
+    // Gera o token JWT
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name
+      },
+      process.env.JWT_SECRET || 'fallback-secret-key',
+      { expiresIn: '1d' }
+    )
+
+    // Cria a resposta com os dados do usuário
     const response = NextResponse.json({
-      message: 'Login realizado com sucesso',
-      user: result.user
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      }
     })
 
-    response.cookies.set({
-      name: 'auth_token',
-      value: result.token,
+    // Define o cookie na resposta
+    response.cookies.set('auth_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 // 7 dias
+      maxAge: 60 * 60 * 24 // 1 dia
     })
 
     return response
   } catch (error) {
-    console.error('Erro no login:', error)
+    console.error('Erro ao fazer login:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erro ao fazer login' },
-      { status: 401 }
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
     )
   }
 } 

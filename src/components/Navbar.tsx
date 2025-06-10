@@ -1,46 +1,41 @@
 'use client';
 
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import Link from 'next/link';
 
 export default function Navbar() {
-  const { user, loading, logout, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50 px-4 py-3">
-      <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <Link href="/" className="text-lg font-semibold text-gray-800 hover:text-blue-600 transition-colors">
+    <nav className="mb-8 border-b border-gray-800 bg-gray-900 py-4">
+      <div className="container mx-auto flex items-center justify-between px-4">
+        <Link href="/transcricao" className="text-xl font-bold text-white">
           Athena
         </Link>
-
-        <div className="flex items-center space-x-4">
-          {loading ? (
-            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          ) : isAuthenticated ? (
-            <>
-              <div className="text-sm text-gray-600">
-                Olá, {user?.name}
-              </div>
+        <div className="flex items-center gap-4">
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-4">
+              <span className="text-gray-300">Olá, {user.name || user.email}</span>
               <button
                 onClick={logout}
-                className="px-4 py-2 text-sm text-red-600 bg-white border border-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                className="rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-400 transition hover:bg-red-500/20"
               >
                 Sair
               </button>
-            </>
+            </div>
           ) : (
             <>
               <Link
                 href="/login"
-                className="px-4 py-2 text-sm text-blue-600 bg-white border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                className="rounded-lg bg-primary-500 px-4 py-2 text-white transition-colors hover:bg-primary-600"
               >
-                Entrar
+                Login
               </Link>
               <Link
                 href="/register"
-                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                className="rounded-lg border border-primary-500 px-4 py-2 text-primary-500 transition-colors hover:bg-primary-500 hover:text-white"
               >
-                Criar Conta
+                Cadastro
               </Link>
             </>
           )}

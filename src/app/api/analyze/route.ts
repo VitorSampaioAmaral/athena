@@ -597,56 +597,54 @@ function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: n
 
 // Função para determinar o nome da cor usando HSV
 function getNomeCorHSV(h: number, s: number, v: number): string {
-    // Definição de intervalos de cores em HSV
-    const coresHSV = [
-        { nome: 'Vermelho', hMin: 355, hMax: 10, sMin: 50 },
-        { nome: 'Vermelho Escuro', hMin: 355, hMax: 10, sMin: 50, vMax: 50 },
-        { nome: 'Rosa', hMin: 320, hMax: 355, sMin: 20 },
-        { nome: 'Rosa Claro', hMin: 320, hMax: 355, sMin: 20, vMin: 80 },
-        { nome: 'Roxo', hMin: 270, hMax: 320, sMin: 30 },
-        { nome: 'Roxo Escuro', hMin: 270, hMax: 320, sMin: 30, vMax: 50 },
-        { nome: 'Azul', hMin: 220, hMax: 270, sMin: 40 },
-        { nome: 'Azul Claro', hMin: 220, hMax: 270, sMin: 40, vMin: 80 },
-        { nome: 'Azul Marinho', hMin: 220, hMax: 270, sMin: 40, vMax: 50 },
-        { nome: 'Ciano', hMin: 180, hMax: 220, sMin: 40 },
-        { nome: 'Verde Água', hMin: 160, hMax: 180, sMin: 30 },
-        { nome: 'Verde', hMin: 90, hMax: 160, sMin: 40 },
-        { nome: 'Verde Escuro', hMin: 90, hMax: 160, sMin: 40, vMax: 50 },
-        { nome: 'Verde Lima', hMin: 65, hMax: 90, sMin: 40 },
-        { nome: 'Amarelo', hMin: 45, hMax: 65, sMin: 40 },
-        { nome: 'Amarelo Claro', hMin: 45, hMax: 65, sMin: 40, vMin: 90 },
-        { nome: 'Laranja', hMin: 20, hMax: 45, sMin: 50 },
-        { nome: 'Marrom', hMin: 10, hMax: 20, sMin: 40 },
-        { nome: 'Marrom Escuro', hMin: 10, hMax: 20, sMin: 40, vMax: 50 },
-        { nome: 'Bege', hMin: 20, hMax: 45, sMin: 10, sMax: 50, vMin: 80 },
-        { nome: 'Dourado', hMin: 35, hMax: 45, sMin: 50, vMin: 60 }
-    ];
-
     // Ajusta o matiz para lidar com o vermelho (que cruza 0/360)
     if (h < 0) h += 360;
     if (h >= 360) h -= 360;
 
-    // Casos especiais primeiro
-    if (v < 20) return 'Preto';
-    if (v > 90 && s < 10) return 'Branco';
-    if (s < 15) {
-        if (v < 40) return 'Cinza Escuro';
+    // Casos especiais primeiro (cores acromáticas)
+    if (v <= 20) return 'Preto';
+    if (v >= 95 && s <= 10) return 'Branco';
+    if (s <= 10) {
+        if (v < 30) return 'Cinza Escuro';
         if (v < 70) return 'Cinza';
         return 'Cinza Claro';
     }
 
-    // Procura a cor correspondente nos intervalos definidos
-    for (const cor of coresHSV) {
-        const hInRange = cor.hMin <= cor.hMax
-            ? h >= cor.hMin && h <= cor.hMax
-            : h >= cor.hMin || h <= cor.hMax;
-
-        const sInRange = s >= (cor.sMin ?? 0) && s <= (cor.sMax ?? 100);
-        const vInRange = v >= (cor.vMin ?? 0) && v <= (cor.vMax ?? 100);
-
-        if (hInRange && sInRange && vInRange) {
-            return cor.nome;
-        }
+    // Define as faixas de cores
+    if (h >= 345 || h < 10) {
+        return v < 50 ? 'Vermelho Escuro' : 'Vermelho';
+    }
+    if (h >= 10 && h < 20) {
+        return v < 50 ? 'Marrom Escuro' : 'Marrom';
+    }
+    if (h >= 20 && h < 40) {
+        if (s < 40 && v > 80) return 'Bege';
+        if (s > 80 && v > 60) return 'Dourado';
+        return 'Laranja';
+    }
+    if (h >= 40 && h < 70) {
+        return v > 90 ? 'Amarelo Claro' : 'Amarelo';
+    }
+    if (h >= 70 && h < 150) {
+        if (h < 90) return 'Verde Lima';
+        return v < 50 ? 'Verde Escuro' : 'Verde';
+    }
+    if (h >= 150 && h < 180) {
+        return 'Verde Água';
+    }
+    if (h >= 180 && h < 200) {
+        return 'Ciano';
+    }
+    if (h >= 200 && h < 270) {
+        if (v < 50) return 'Azul Marinho';
+        if (v > 80) return 'Azul Claro';
+        return 'Azul';
+    }
+    if (h >= 270 && h < 290) {
+        return v < 50 ? 'Roxo Escuro' : 'Roxo';
+    }
+    if (h >= 290 && h < 345) {
+        return v > 80 ? 'Rosa Claro' : 'Rosa';
     }
 
     return 'Cor Indefinida';
@@ -660,6 +658,13 @@ async function analyzeColors(imageBuffer: Buffer): Promise<string> {
             .raw()
             .toBuffer({ resolveWithObject: true });
 
+        console.log('Informações da imagem:', {
+            width: info.width,
+            height: info.height,
+            channels: info.channels,
+            size: data.length
+        });
+
         const pixels = [];
         const channels = info.channels;
 
@@ -668,39 +673,59 @@ async function analyzeColors(imageBuffer: Buffer): Promise<string> {
             const r = data[i];
             const g = data[i + 1];
             const b = data[i + 2];
+
+            // Pula pixels transparentes se houver canal alpha
+            if (channels === 4 && data[i + 3] === 0) continue;
+
             const hsv = rgbToHsv(r, g, b);
+            
+            // Log para debug dos primeiros pixels
+            if (pixels.length < 5) {
+                console.log('Pixel RGB:', { r, g, b });
+                console.log('Pixel HSV:', hsv);
+            }
+
             pixels.push(hsv);
         }
 
         // Agrupa cores similares usando HSV
         const colorGroups = new Map();
         pixels.forEach(pixel => {
-            // Reduz a precisão para agrupar tons similares
-            const key = `${Math.floor(pixel.h/10)},${Math.floor(pixel.s/5)},${Math.floor(pixel.v/5)}`;
+            // Ajusta os intervalos para melhor agrupamento
+            const h = Math.floor(pixel.h / 20) * 20; // Grupos de 20 graus
+            const s = Math.floor(pixel.s / 20) * 20; // Grupos de 20%
+            const v = Math.floor(pixel.v / 20) * 20; // Grupos de 20%
+            
+            const key = `${h},${s},${v}`;
             colorGroups.set(key, (colorGroups.get(key) || 0) + 1);
         });
+
+        // Debug das cores encontradas
+        console.log('Grupos de cores:', Array.from(colorGroups.entries()).slice(0, 5));
 
         // Converte para array e ordena por frequência
         const sortedColors = Array.from(colorGroups.entries())
             .map(([key, count]) => {
                 const [h, s, v] = key.split(',').map((x: string) => parseFloat(x));
                 return {
-                    h: h * 10, // Reverte a redução de precisão
-                    s: s * 5,
-                    v: v * 5,
+                    h, s, v,
                     count,
                     percentage: (count / pixels.length) * 100
                 };
             })
             .sort((a, b) => b.percentage - a.percentage)
-            .filter(color => color.percentage > 3) // Filtra cores com menos de 3% de presença
-            .slice(0, 8); // Top 8 cores mais frequentes
+            .filter(color => color.percentage > 1) // Reduz o limiar para 1%
+            .slice(0, 10); // Aumenta para 10 cores
+
+        // Debug das cores ordenadas
+        console.log('Cores ordenadas:', sortedColors.slice(0, 3));
 
         // Gera o relatório
         let colorAnalysis = 'Análise de Cores:\nCores predominantes:\n';
         sortedColors.forEach(color => {
             const colorName = getNomeCorHSV(color.h, color.s, color.v);
-            colorAnalysis += `- ${colorName} (${color.percentage.toFixed(1)}%)\n`;
+            const percentage = color.percentage.toFixed(1);
+            colorAnalysis += `- ${colorName} (${percentage}%, HSV: ${Math.round(color.h)}°, ${Math.round(color.s)}%, ${Math.round(color.v)}%)\n`;
         });
 
         return colorAnalysis;
@@ -979,10 +1004,19 @@ function generateCacheKey(imageBase64: string, detectedText: string): string {
     return `${start}${end}-${safeDetectedText.slice(0, 100)}`;
 }
 
+// Função para formatar erro para exibição
+function formatError(error: any): string {
+    if (error instanceof Error) {
+        return `${error.name}: ${error.message}`;
+    }
+    return String(error);
+}
+
 // --- Função principal POST ---
 export async function POST(request: Request) {
     const reqStartTime = performance.now();
     logAnalysis('análise', 'started', 'Iniciando processo de análise');
+    const errors: string[] = [];
 
     try {
         const { image } = await request.json();
@@ -1042,36 +1076,38 @@ export async function POST(request: Request) {
 
         // Detecta o texto na imagem
         logAnalysis('OCR', 'started', 'Iniciando detecção de texto');
-        const detectedText = await detectText(imageBuffer).catch(error => {
-            logAnalysis('OCR', 'error', 'Erro na detecção de texto', { error: error.message });
-            throw error;
-        });
-        logAnalysis('OCR', 'completed', 'Texto detectado com sucesso', {
-            textLength: detectedText.length
-        });
+        let detectedText = '';
+        try {
+            detectedText = await detectText(imageBuffer);
+            logAnalysis('OCR', 'completed', 'Texto detectado com sucesso');
+        } catch (error) {
+            const errorMsg = formatError(error);
+            errors.push(`Erro na detecção de texto: ${errorMsg}`);
+            logAnalysis('OCR', 'error', 'Erro na detecção de texto', { error: errorMsg });
+        }
 
         // Análises paralelas de cores e elementos
         logAnalysis('análise-paralela', 'started', 'Iniciando análises de cores e elementos');
-        const [colorResult, elementResult] = await Promise.all([
-            analyzeColors(imageBuffer).then(result => {
-                logAnalysis('cores', 'completed', 'Análise de cores concluída', {
-                    colorsDetected: result.split('-').length - 1
-                });
-                return result;
-            }).catch(error => {
-                logAnalysis('cores', 'error', 'Erro na análise de cores', { error: error.message });
-                throw error;
-            }),
-            detectElements(imageBuffer).then(result => {
-                logAnalysis('elementos', 'completed', 'Análise de elementos concluída', {
-                    elementsDetected: result.split('-').length - 1
-                });
-                return result;
-            }).catch(error => {
-                logAnalysis('elementos', 'error', 'Erro na detecção de elementos', { error: error.message });
-                throw error;
-            })
-        ]);
+        let colorResult = '';
+        let elementResult = '';
+
+        try {
+            colorResult = await analyzeColors(imageBuffer);
+            logAnalysis('cores', 'completed', 'Análise de cores concluída');
+        } catch (error) {
+            const errorMsg = formatError(error);
+            errors.push(`Erro na análise de cores: ${errorMsg}`);
+            logAnalysis('cores', 'error', 'Erro na análise de cores', { error: errorMsg });
+        }
+
+        try {
+            elementResult = await detectElements(imageBuffer);
+            logAnalysis('elementos', 'completed', 'Análise de elementos concluída');
+        } catch (error) {
+            const errorMsg = formatError(error);
+            errors.push(`Erro na detecção de elementos: ${errorMsg}`);
+            logAnalysis('elementos', 'error', 'Erro na detecção de elementos', { error: errorMsg });
+        }
 
         // Extrai os elementos da análise
         const elements = elementResult
@@ -1079,72 +1115,53 @@ export async function POST(request: Request) {
             .filter(line => line.startsWith('- '))
             .map(line => line.substring(2));
 
-        logAnalysis('interpretação', 'started', 'Iniciando interpretação do conteúdo');
-        const interpretation = await interpretContent(detectedText, elements).catch(error => {
-            logAnalysis('interpretação', 'error', 'Erro na interpretação do conteúdo', { error: error.message });
-            throw error;
-        });
-        logAnalysis('interpretação', 'completed', 'Interpretação concluída com sucesso');
+        let interpretation = '';
+        try {
+            interpretation = await interpretContent(detectedText, elements);
+            logAnalysis('interpretação', 'completed', 'Interpretação concluída com sucesso');
+        } catch (error) {
+            const errorMsg = formatError(error);
+            errors.push(`Erro na interpretação: ${errorMsg}`);
+            logAnalysis('interpretação', 'error', 'Erro na interpretação', { error: errorMsg });
+        }
 
         const analysis = `
 <div class="analysis-container">
   <h2 class="analysis-title">Análise da Imagem</h2>
 
+  ${errors.length > 0 ? `
+  <div class="errors-section">
+    <h3>Avisos durante o processamento:</h3>
+    <ul class="error-list">
+      ${errors.map(error => `<li class="error-item">${error}</li>`).join('')}
+    </ul>
+  </div>
+  ` : ''}
+
   <div class="transcription-text">
     <h3>Texto Detectado</h3>
-    ${detectedText}
+    ${detectedText || 'Nenhum texto detectado'}
   </div>
 
   <div class="color-analysis">
     <h3>Análise de Cores</h3>
-    <ul>
-      ${colorResult.split('-')
-        .filter(line => line.trim() && !line.includes('Cores predominantes:') && !line.includes('Análise de Cores:'))
-        .map(color => {
-          const match = color.trim().match(/(.*?)\s*\((\d+\.?\d*%)\)/);
-          if (match) {
-            const [, colorName, percentage] = match;
-            return `<li style="--percentage: ${percentage}">${colorName} <span>${percentage}</span></li>`;
-          }
-          return `<li>${color.trim()}</li>`;
-        })
-        .join('')}
-    </ul>
+    ${colorResult || 'Não foi possível analisar as cores'}
   </div>
 
   <div class="elements-analysis">
     <h3>Elementos Visuais</h3>
-    <ul>
-      ${elementResult.split('-')
-        .filter(line => line.trim() && !line.includes('Elementos visuais detectados:'))
-        .map(element => `<li>${element.trim()}</li>`)
-        .join('')}
-    </ul>
+    ${elementResult || 'Não foi possível detectar elementos'}
   </div>
 
   <div class="content-interpretation">
     <h3>Interpretação do Conteúdo</h3>
-    ${interpretation.replace('Interpretação de Conteúdo:', '').trim()}
+    ${interpretation || 'Não foi possível gerar interpretação'}
   </div>
 
   <div class="summary">
     <h3>Resumo Final</h3>
     <p>Esta análise combinou reconhecimento de texto (OCR), análise de cores e identificação de elementos visuais para fornecer uma compreensão abrangente da imagem.</p>
-  </div>
-
-  <div class="analysis-logs">
-    <h3>Log de Processamento</h3>
-    <div class="log-container">
-      ${analysisLogs.map(log => `
-        <div class="log-entry ${log.status}">
-          <span class="log-time">${new Date(log.timestamp).toLocaleTimeString()}</span>
-          <span class="log-stage">${log.stage}</span>
-          <span class="log-status">${log.status}</span>
-          <span class="log-message">${log.message}</span>
-          ${log.details ? `<div class="log-details">${JSON.stringify(log.details)}</div>` : ''}
-        </div>
-      `).join('')}
-    </div>
+    ${errors.length > 0 ? `<p class="warning">Alguns erros ocorreram durante o processamento. Verifique os avisos acima.</p>` : ''}
   </div>
 </div>`;
 
@@ -1155,28 +1172,32 @@ export async function POST(request: Request) {
         });
         
         logAnalysis('análise', 'completed', 'Análise concluída com sucesso', {
-            processingTime: (performance.now() - reqStartTime).toFixed(2) + 'ms'
+            processingTime: (performance.now() - reqStartTime).toFixed(2) + 'ms',
+            errorsCount: errors.length
         });
 
         return NextResponse.json({
             analysis,
-            cached: false,
+            errors,
             logs: analysisLogs,
             debug: {
-                textDetected: !detectedText.includes('Não foi possível detectar'),
+                textDetected: detectedText.length > 0,
                 elementsCount: elements.length,
                 hasInterpretation: interpretation.length > 50,
-                processingTime: (performance.now() - reqStartTime).toFixed(2)
+                processingTime: (performance.now() - reqStartTime).toFixed(2),
+                errorsCount: errors.length
             }
         });
 
-    } catch (error: any) {
-        logAnalysis('análise', 'error', 'Erro durante a análise', {
-            error: error.message,
-            stack: error.stack
-        });
+    } catch (error) {
+        const errorMsg = formatError(error);
+        logAnalysis('análise', 'error', 'Erro fatal durante análise', { error: errorMsg });
         return NextResponse.json(
-            { error: error.message || 'Erro interno do servidor', logs: analysisLogs },
+            { 
+                error: 'Erro ao processar imagem',
+                details: errorMsg,
+                logs: analysisLogs
+            },
             { status: 500 }
         );
     }
