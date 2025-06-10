@@ -14,23 +14,21 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  name          String
-  password      String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  transcriptions Transcription[]
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  analyses  Analysis[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
-model Transcription {
-  id          String   @id @default(uuid())
-  text        String   @db.Text
-  imageUrl    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Analysis {
+  id          String    @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
-
-  @@index([userId])
+  user        User      @relation(fields: [userId], references: [id])
+  imageUrl    String
+  result      String    @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

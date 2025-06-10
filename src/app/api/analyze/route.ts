@@ -3,6 +3,8 @@ import axios from 'axios';
 import sharp from 'sharp';
 import { pipeline } from '@xenova/transformers';
 import { performance } from 'perf_hooks';
+import crypto from 'crypto';
+import { broadcastProgress } from '../progress/route';
 
 // Cache para armazenar resultados de análises similares
 const analysisCache = new Map<string, { result: string; timestamp: number }>();
@@ -23,6 +25,28 @@ Analise o seguinte conteúdo:
 // Configuração do ambiente ONNX Runtime
 process.env.ONNXRUNTIME_LOG_LEVEL = '3'; // 3 = ERROR, ignora warnings
 process.env.ONNXRUNTIME_LOG_VERBOSITY_LEVEL = '0'; // Minimiza verbosidade
+
+interface AnalysisLog {
+  timestamp: number;
+  stage: string;
+  status: 'started' | 'completed' | 'error';
+  message: string;
+  details?: any;
+}
+
+const analysisLogs: AnalysisLog[] = [];
+
+function logAnalysis(stage: string, status: AnalysisLog['status'], message: string, details?: any) {
+  const log: AnalysisLog = {
+    timestamp: Date.now(),
+    stage,
+    status,
+    message,
+    details
+  };
+  analysisLogs.push(log);
+  console.log(`[${new Date(log.timestamp).toISOString()}] ${stage}: ${message}`);
+}
 
 // --- Funções de Validação e Tradução ---
 function isValidPortuguese(text: string): boolean {
@@ -371,158 +395,25 @@ async function translateToPortuguese(text: string): Promise<string> {
             preview: textToTranslate.slice(0, 50) + '...'
         });
 
-        let translations: string[] = [];
-        let translationProvider = '';
-        let errors: any[] = [];
-
-        // Tenta Lecto AI primeiro
+        // Usando apenas Lecto AI para tradução
         try {
-            console.log('Tentando tradução com Lecto AI...');
+            console.log('Traduzindo com Lecto AI...');
             const lectoTranslation = await translateWithLecto(textToTranslate);
             if (isValidPortuguese(lectoTranslation)) {
-                translations.push(lectoTranslation);
-                translationProvider = 'Lecto AI';
                 console.log('Tradução com Lecto AI bem-sucedida');
+                console.timeEnd('translation-time');
+                return lectoTranslation;
             }
         } catch (error: any) {
-            errors.push({ provider: 'Lecto AI', error });
-            console.log('Lecto AI falhou:', {
+            console.error('Erro na tradução com Lecto AI:', {
                 message: error.message,
                 status: error.status,
                 response: error.response
             });
+            throw error;
         }
 
-        // Se Lecto falhar, tenta DeepL
-        if (translations.length === 0) {
-            try {
-                console.log('Tentando tradução com DeepL...');
-                const deeplResponse = await fetch('https://api-free.deepl.com/v2/translate', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `DeepL-Auth-Key ${process.env.DEEPL_API_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        text: [textToTranslate],
-                        target_lang: 'PT'
-                    })
-                });
-
-                if (!deeplResponse.ok) {
-                    const errorData = await deeplResponse.json().catch(() => ({}));
-                    throw new Error(`Erro na API DeepL (${deeplResponse.status}): ${JSON.stringify(errorData)}`);
-                }
-
-                const data = await deeplResponse.json();
-                if (data?.translations?.[0]?.text) {
-                    const translatedText = data.translations[0].text;
-                    if (isValidPortuguese(translatedText)) {
-                        translations.push(translatedText);
-                        translationProvider = 'DeepL';
-                        console.log('Tradução com DeepL bem-sucedida');
-                    }
-                }
-            } catch (error: any) {
-                errors.push({ provider: 'DeepL', error });
-                console.log('DeepL falhou:', {
-                    message: error.message,
-                    status: error.status,
-                    response: error.response
-                });
-            }
-        }
-
-        // Tenta LibreTranslate como backup
-        if (translations.length === 0) {
-            try {
-                console.log('Tentando tradução com LibreTranslate...');
-                const libreResponse = await fetch('https://libretranslate.de/translate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        q: textToTranslate,
-                        source: 'en',
-                        target: 'pt',
-                        format: 'text'
-                    })
-                });
-
-                if (!libreResponse.ok) {
-                    const errorData = await libreResponse.json().catch(() => ({}));
-                    throw new Error(`Erro na API LibreTranslate (${libreResponse.status}): ${JSON.stringify(errorData)}`);
-                }
-
-                const data = await libreResponse.json();
-                if (data?.translatedText) {
-                    const translatedText = data.translatedText;
-                    if (isValidPortuguese(translatedText)) {
-                        translations.push(translatedText);
-                        translationProvider = 'LibreTranslate';
-                        console.log('Tradução com LibreTranslate bem-sucedida');
-                    }
-                }
-            } catch (error: any) {
-                errors.push({ provider: 'LibreTranslate', error });
-                console.log('LibreTranslate falhou:', {
-                    message: error.message,
-                    status: error.status,
-                    response: error.response
-                });
-            }
-        }
-
-        // MyMemory como última opção
-        if (translations.length === 0) {
-            try {
-                console.log('Tentando tradução com MyMemory...');
-                const myMemoryResponse = await fetch('https://api.mymemory.translated.net/get?' + new URLSearchParams({
-                    q: textToTranslate,
-                    langpair: 'en|pt-BR',
-                    de: 'admin@athena.com'
-                }));
-
-                if (!myMemoryResponse.ok) {
-                    const errorData = await myMemoryResponse.json().catch(() => ({}));
-                    throw new Error(`Erro na API MyMemory (${myMemoryResponse.status}): ${JSON.stringify(errorData)}`);
-                }
-
-                const data = await myMemoryResponse.json();
-                if (data.responseStatus === 200 && data.responseData?.translatedText) {
-                    const translatedText = data.responseData.translatedText;
-                    if (isValidPortuguese(translatedText)) {
-                        translations.push(translatedText);
-                        translationProvider = 'MyMemory';
-                        console.log('Tradução com MyMemory bem-sucedida');
-                    }
-                }
-            } catch (error: any) {
-                errors.push({ provider: 'MyMemory', error });
-                console.log('MyMemory falhou:', {
-                    message: error.message,
-                    status: error.status,
-                    response: error.response
-                });
-            }
-        }
-
-        if (translations.length > 0) {
-            const bestTranslation = translations[0];
-            console.log('Tradução selecionada:', {
-                originalLength: textToTranslate.length,
-                translatedLength: bestTranslation.length,
-                preview: bestTranslation.slice(0, 50) + '...',
-                provider: translationProvider
-            });
-
-            console.timeEnd('translation-time');
-            return bestTranslation;
-        }
-
-        console.error('Nenhuma tradução válida foi obtida. Erros:', errors);
-        return `Não foi possível obter uma tradução válida. Texto original: ${textToTranslate}`;
+        throw new Error('Não foi possível obter uma tradução válida');
 
     } catch (error: any) {
         console.error('Erro geral na tradução:', {
@@ -673,108 +564,145 @@ O conteúdo está bem apresentado, com texto claro sobre fundo escuro para fáci
 A disposição dos elementos e o contraste escolhido tornam a mensagem acessível a todos os leitores.`;
 }
 
-// Função para converter RGB em nome de cor em português
-function getRGBColorName(r: number, g: number, b: number): string {
-    // Define as cores básicas com seus intervalos RGB e nomes em português
-    const colorRanges = [
-        {
-            name: 'Branco',
-            test: (r: number, g: number, b: number) => r > 240 && g > 240 && b > 240
-        },
-        {
-            name: 'Preto',
-            test: (r: number, g: number, b: number) => r < 30 && g < 30 && b < 30
-        },
-        {
-            name: 'Cinza Claro',
-            test: (r: number, g: number, b: number) => r > 180 && g > 180 && b > 180 && Math.abs(r - g) < 20 && Math.abs(g - b) < 20
-        },
-        {
-            name: 'Cinza Escuro',
-            test: (r: number, g: number, b: number) => r > 30 && r < 180 && g > 30 && g < 180 && b > 30 && b < 180 && Math.abs(r - g) < 20 && Math.abs(g - b) < 20
-        },
-        {
-            name: 'Azul Petróleo',
-            test: (r: number, g: number, b: number) => r < 100 && g > 60 && g < 150 && b > 60 && b < 150 && Math.abs(g - b) < 30
-        },
-        {
-            name: 'Azul Claro',
-            test: (r: number, g: number, b: number) => r < g && r < b && b > 180
-        },
-        {
-            name: 'Azul Escuro',
-            test: (r: number, g: number, b: number) => r < g && r < b && b < 180 && b > 60
-        },
-        {
-            name: 'Verde Água',
-            test: (r: number, g: number, b: number) => r < g && Math.abs(g - b) < 30
-        },
-        {
-            name: 'Verde',
-            test: (r: number, g: number, b: number) => r < g && g > b
-        },
-        {
-            name: 'Vermelho',
-            test: (r: number, g: number, b: number) => r > g + 50 && r > b + 50
-        },
-        {
-            name: 'Amarelo',
-            test: (r: number, g: number, b: number) => r > 200 && g > 200 && b < 100
-        },
-        {
-            name: 'Roxo',
-            test: (r: number, g: number, b: number) => r > g && b > g && Math.abs(r - b) < 50
-        }
-    ];
+// Função para converter RGB para HSV
+function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: number } {
+    r /= 255;
+    g /= 255;
+    b /= 255;
 
-    // Encontra a primeira cor que corresponde aos valores RGB
-    const color = colorRanges.find(range => range.test(r, g, b));
-    
-    // Se não encontrar uma correspondência, retorna uma descrição genérica baseada nos valores
-    if (!color) {
-        if (Math.abs(r - g) < 30 && Math.abs(g - b) < 30) {
-            const intensity = Math.round((r + g + b) / 3);
-            return `Cinza (intensidade ${Math.round((intensity / 255) * 100)}%)`;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+
+    let h = 0;
+    let s = max === 0 ? 0 : diff / max;
+    let v = max;
+
+    if (diff !== 0) {
+        switch (max) {
+            case r:
+                h = 60 * ((g - b) / diff + (g < b ? 6 : 0));
+                break;
+            case g:
+                h = 60 * ((b - r) / diff + 2);
+                break;
+            case b:
+                h = 60 * ((r - g) / diff + 4);
+                break;
         }
-        return `Cor personalizada (R:${r}, G:${g}, B:${b})`;
     }
 
-    return color.name;
+    return { h, s: s * 100, v: v * 100 };
+}
+
+// Função para determinar o nome da cor usando HSV
+function getNomeCorHSV(h: number, s: number, v: number): string {
+    // Definição de intervalos de cores em HSV
+    const coresHSV = [
+        { nome: 'Vermelho', hMin: 355, hMax: 10, sMin: 50 },
+        { nome: 'Vermelho Escuro', hMin: 355, hMax: 10, sMin: 50, vMax: 50 },
+        { nome: 'Rosa', hMin: 320, hMax: 355, sMin: 20 },
+        { nome: 'Rosa Claro', hMin: 320, hMax: 355, sMin: 20, vMin: 80 },
+        { nome: 'Roxo', hMin: 270, hMax: 320, sMin: 30 },
+        { nome: 'Roxo Escuro', hMin: 270, hMax: 320, sMin: 30, vMax: 50 },
+        { nome: 'Azul', hMin: 220, hMax: 270, sMin: 40 },
+        { nome: 'Azul Claro', hMin: 220, hMax: 270, sMin: 40, vMin: 80 },
+        { nome: 'Azul Marinho', hMin: 220, hMax: 270, sMin: 40, vMax: 50 },
+        { nome: 'Ciano', hMin: 180, hMax: 220, sMin: 40 },
+        { nome: 'Verde Água', hMin: 160, hMax: 180, sMin: 30 },
+        { nome: 'Verde', hMin: 90, hMax: 160, sMin: 40 },
+        { nome: 'Verde Escuro', hMin: 90, hMax: 160, sMin: 40, vMax: 50 },
+        { nome: 'Verde Lima', hMin: 65, hMax: 90, sMin: 40 },
+        { nome: 'Amarelo', hMin: 45, hMax: 65, sMin: 40 },
+        { nome: 'Amarelo Claro', hMin: 45, hMax: 65, sMin: 40, vMin: 90 },
+        { nome: 'Laranja', hMin: 20, hMax: 45, sMin: 50 },
+        { nome: 'Marrom', hMin: 10, hMax: 20, sMin: 40 },
+        { nome: 'Marrom Escuro', hMin: 10, hMax: 20, sMin: 40, vMax: 50 },
+        { nome: 'Bege', hMin: 20, hMax: 45, sMin: 10, sMax: 50, vMin: 80 },
+        { nome: 'Dourado', hMin: 35, hMax: 45, sMin: 50, vMin: 60 }
+    ];
+
+    // Ajusta o matiz para lidar com o vermelho (que cruza 0/360)
+    if (h < 0) h += 360;
+    if (h >= 360) h -= 360;
+
+    // Casos especiais primeiro
+    if (v < 20) return 'Preto';
+    if (v > 90 && s < 10) return 'Branco';
+    if (s < 15) {
+        if (v < 40) return 'Cinza Escuro';
+        if (v < 70) return 'Cinza';
+        return 'Cinza Claro';
+    }
+
+    // Procura a cor correspondente nos intervalos definidos
+    for (const cor of coresHSV) {
+        const hInRange = cor.hMin <= cor.hMax
+            ? h >= cor.hMin && h <= cor.hMax
+            : h >= cor.hMin || h <= cor.hMax;
+
+        const sInRange = s >= (cor.sMin ?? 0) && s <= (cor.sMax ?? 100);
+        const vInRange = v >= (cor.vMin ?? 0) && v <= (cor.vMax ?? 100);
+
+        if (hInRange && sInRange && vInRange) {
+            return cor.nome;
+        }
+    }
+
+    return 'Cor Indefinida';
 }
 
 async function analyzeColors(imageBuffer: Buffer): Promise<string> {
     try {
+        // Processa a imagem usando sharp para obter os pixels
         const { data, info } = await sharp(imageBuffer)
+            .resize(300, 300, { fit: 'inside' })
             .raw()
             .toBuffer({ resolveWithObject: true });
 
-        const colorMap = new Map<string, number>();
-        const pixelCount = info.width * info.height;
+        const pixels = [];
         const channels = info.channels;
 
+        // Converte os pixels para HSV
         for (let i = 0; i < data.length; i += channels) {
             const r = data[i];
             const g = data[i + 1];
             const b = data[i + 2];
-            const colorName = getRGBColorName(r, g, b);
-            colorMap.set(colorName, (colorMap.get(colorName) || 0) + 1);
+            const hsv = rgbToHsv(r, g, b);
+            pixels.push(hsv);
         }
 
-        const sortedColors = Array.from(colorMap.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5); // Top 5 cores
+        // Agrupa cores similares usando HSV
+        const colorGroups = new Map();
+        pixels.forEach(pixel => {
+            // Reduz a precisão para agrupar tons similares
+            const key = `${Math.floor(pixel.h/10)},${Math.floor(pixel.s/5)},${Math.floor(pixel.v/5)}`;
+            colorGroups.set(key, (colorGroups.get(key) || 0) + 1);
+        });
 
-        let colorAnalysis = 'Análise de Cores:\n';
-        if (sortedColors.length > 0) {
-            colorAnalysis += 'Cores predominantes:\n';
-            sortedColors.forEach(([colorName, count]) => {
-                const percentage = ((count / pixelCount) * 100).toFixed(2);
-                colorAnalysis += `- ${colorName} (${percentage}%)\n`;
-            });
-        } else {
-            colorAnalysis += 'Não foi possível identificar cores predominantes.';
-        }
-        
+        // Converte para array e ordena por frequência
+        const sortedColors = Array.from(colorGroups.entries())
+            .map(([key, count]) => {
+                const [h, s, v] = key.split(',').map((x: string) => parseFloat(x));
+                return {
+                    h: h * 10, // Reverte a redução de precisão
+                    s: s * 5,
+                    v: v * 5,
+                    count,
+                    percentage: (count / pixels.length) * 100
+                };
+            })
+            .sort((a, b) => b.percentage - a.percentage)
+            .filter(color => color.percentage > 3) // Filtra cores com menos de 3% de presença
+            .slice(0, 8); // Top 8 cores mais frequentes
+
+        // Gera o relatório
+        let colorAnalysis = 'Análise de Cores:\nCores predominantes:\n';
+        sortedColors.forEach(color => {
+            const colorName = getNomeCorHSV(color.h, color.s, color.v);
+            colorAnalysis += `- ${colorName} (${color.percentage.toFixed(1)}%)\n`;
+        });
+
         return colorAnalysis;
     } catch (error) {
         console.error('Erro ao analisar cores:', error);
@@ -1053,67 +981,97 @@ function generateCacheKey(imageBase64: string, detectedText: string): string {
 
 // --- Função principal POST ---
 export async function POST(request: Request) {
-    console.log(`[${new Date().toISOString()}] Nova requisição POST recebida.`);
     const reqStartTime = performance.now();
+    logAnalysis('análise', 'started', 'Iniciando processo de análise');
 
     try {
-        const { imageBase64 } = await request.json();
+        const { image } = await request.json();
 
-        if (!imageBase64) {
-            console.error('Erro: imageBase64 não foi fornecido na requisição.');
+        if (!image) {
+            logAnalysis('validação', 'error', 'Nenhuma imagem fornecida');
             return NextResponse.json(
-                { error: 'Dados da requisição incompletos: imageBase64 é necessário.' },
-                { status: 400 }
-            );
-        }
-        
-        const imageBuffer = Buffer.from(imageBase64, 'base64');
-        const imageSize = imageBuffer.length;
-        console.log('Tamanho da imagem recebida:', {
-            size: `${(imageSize / 1024 / 1024).toFixed(2)}MB`,
-            limiteMB: `${(MAX_IMAGE_SIZE / 1024 / 1024).toFixed(2)}MB`
-        });
-
-        if (imageSize > MAX_IMAGE_SIZE) {
-            console.warn('Imagem excede o tamanho máximo permitido');
-            return NextResponse.json(
-                { error: 'Imagem muito grande. Por favor, use uma imagem menor que 5MB.' },
+                { error: 'Nenhuma imagem fornecida' },
                 { status: 400 }
             );
         }
 
-        cleanOldCache();
+        // Converte base64 para buffer
+        const imageBuffer = Buffer.from(image.split(',')[1], 'base64');
+        logAnalysis('preparação', 'completed', 'Imagem convertida para buffer');
 
-        // Realiza OCR na imagem
-        const detectedText = await detectText(imageBuffer);
-        
-        // O cache key agora usa o texto detectado pelo OCR
-        const cacheKey = generateCacheKey(imageBase64, detectedText);
+        // Gera uma chave única para o cache
+        const cacheKey = crypto.createHash('md5').update(image).digest('hex');
+
+        // Verifica se já existe no cache
         const cachedResult = analysisCache.get(cacheKey);
         if (cachedResult) {
-            console.log('Resultado encontrado em cache. Retornando...');
-            console.log(`Tempo total da requisição (cached): ${(performance.now() - reqStartTime).toFixed(2)}ms`);
+            logAnalysis('cache', 'completed', 'Resultado encontrado no cache', {
+                cacheAge: Date.now() - cachedResult.timestamp
+            });
             return NextResponse.json({
                 analysis: cachedResult.result,
-                cached: true
+                cached: true,
+                logs: analysisLogs
             });
         }
 
-        console.log('Iniciando análise da imagem (não cacheada)...');
-        
+        // Inicia a detecção de texto
+        broadcastProgress({
+            stage: 'text',
+            status: 'started',
+            message: 'Iniciando detecção de texto...',
+            progress: 0
+        });
+
+        // Simula o progresso da detecção de texto
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        broadcastProgress({
+            stage: 'text',
+            status: 'loading',
+            message: 'Processando texto...',
+            progress: 50
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        broadcastProgress({
+            stage: 'text',
+            status: 'completed',
+            message: 'Texto detectado com sucesso',
+            progress: 100
+        });
+
+        // Detecta o texto na imagem
+        logAnalysis('OCR', 'started', 'Iniciando detecção de texto');
+        const detectedText = await detectText(imageBuffer).catch(error => {
+            logAnalysis('OCR', 'error', 'Erro na detecção de texto', { error: error.message });
+            throw error;
+        });
+        logAnalysis('OCR', 'completed', 'Texto detectado com sucesso', {
+            textLength: detectedText.length
+        });
+
         // Análises paralelas de cores e elementos
-        console.time('analise-total');
+        logAnalysis('análise-paralela', 'started', 'Iniciando análises de cores e elementos');
         const [colorResult, elementResult] = await Promise.all([
             analyzeColors(imageBuffer).then(result => {
-                console.log('Análise de cores concluída');
+                logAnalysis('cores', 'completed', 'Análise de cores concluída', {
+                    colorsDetected: result.split('-').length - 1
+                });
                 return result;
+            }).catch(error => {
+                logAnalysis('cores', 'error', 'Erro na análise de cores', { error: error.message });
+                throw error;
             }),
             detectElements(imageBuffer).then(result => {
-                console.log('Análise de elementos concluída');
+                logAnalysis('elementos', 'completed', 'Análise de elementos concluída', {
+                    elementsDetected: result.split('-').length - 1
+                });
                 return result;
+            }).catch(error => {
+                logAnalysis('elementos', 'error', 'Erro na detecção de elementos', { error: error.message });
+                throw error;
             })
         ]);
-        console.timeEnd('analise-total');
 
         // Extrai os elementos da análise
         const elements = elementResult
@@ -1121,70 +1079,104 @@ export async function POST(request: Request) {
             .filter(line => line.startsWith('- '))
             .map(line => line.substring(2));
 
-        console.log('Iniciando interpretação do conteúdo...');
-        const interpretation = await interpretContent(detectedText, elements);
+        logAnalysis('interpretação', 'started', 'Iniciando interpretação do conteúdo');
+        const interpretation = await interpretContent(detectedText, elements).catch(error => {
+            logAnalysis('interpretação', 'error', 'Erro na interpretação do conteúdo', { error: error.message });
+            throw error;
+        });
+        logAnalysis('interpretação', 'completed', 'Interpretação concluída com sucesso');
 
-        const analysis = `Análise da Imagem:
+        const analysis = `
+<div class="analysis-container">
+  <h2 class="analysis-title">Análise da Imagem</h2>
 
-${detectedText}
+  <div class="transcription-text">
+    <h3>Texto Detectado</h3>
+    ${detectedText}
+  </div>
 
-${colorResult}
+  <div class="color-analysis">
+    <h3>Análise de Cores</h3>
+    <ul>
+      ${colorResult.split('-')
+        .filter(line => line.trim() && !line.includes('Cores predominantes:') && !line.includes('Análise de Cores:'))
+        .map(color => {
+          const match = color.trim().match(/(.*?)\s*\((\d+\.?\d*%)\)/);
+          if (match) {
+            const [, colorName, percentage] = match;
+            return `<li style="--percentage: ${percentage}">${colorName} <span>${percentage}</span></li>`;
+          }
+          return `<li>${color.trim()}</li>`;
+        })
+        .join('')}
+    </ul>
+  </div>
 
-${elementResult}${interpretation}
+  <div class="elements-analysis">
+    <h3>Elementos Visuais</h3>
+    <ul>
+      ${elementResult.split('-')
+        .filter(line => line.trim() && !line.includes('Elementos visuais detectados:'))
+        .map(element => `<li>${element.trim()}</li>`)
+        .join('')}
+    </ul>
+  </div>
 
----
-Resumo Final:
-Esta análise combinou reconhecimento de texto (OCR), análise de cores e identificação de elementos visuais para fornecer uma compreensão abrangente da imagem.`;
+  <div class="content-interpretation">
+    <h3>Interpretação do Conteúdo</h3>
+    ${interpretation.replace('Interpretação de Conteúdo:', '').trim()}
+  </div>
+
+  <div class="summary">
+    <h3>Resumo Final</h3>
+    <p>Esta análise combinou reconhecimento de texto (OCR), análise de cores e identificação de elementos visuais para fornecer uma compreensão abrangente da imagem.</p>
+  </div>
+
+  <div class="analysis-logs">
+    <h3>Log de Processamento</h3>
+    <div class="log-container">
+      ${analysisLogs.map(log => `
+        <div class="log-entry ${log.status}">
+          <span class="log-time">${new Date(log.timestamp).toLocaleTimeString()}</span>
+          <span class="log-stage">${log.stage}</span>
+          <span class="log-status">${log.status}</span>
+          <span class="log-message">${log.message}</span>
+          ${log.details ? `<div class="log-details">${JSON.stringify(log.details)}</div>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  </div>
+</div>`;
 
         // Armazena o resultado no cache
         analysisCache.set(cacheKey, {
             result: analysis,
             timestamp: Date.now()
         });
-        console.log('Análise concluída e armazenada em cache');
-        console.log(`Tempo total da requisição (novo cálculo): ${(performance.now() - reqStartTime).toFixed(2)}ms`);
+        
+        logAnalysis('análise', 'completed', 'Análise concluída com sucesso', {
+            processingTime: (performance.now() - reqStartTime).toFixed(2) + 'ms'
+        });
 
         return NextResponse.json({
             analysis,
             cached: false,
+            logs: analysisLogs,
             debug: {
                 textDetected: !detectedText.includes('Não foi possível detectar'),
                 elementsCount: elements.length,
-                hasInterpretation: interpretation.length > 50
+                hasInterpretation: interpretation.length > 50,
+                processingTime: (performance.now() - reqStartTime).toFixed(2)
             }
         });
 
     } catch (error: any) {
-        console.error('Erro detalhado no processamento da requisição:', {
-            message: error.message,
-            name: error.name,
-            stack: error.stack?.slice(0, 500),
-            cause: error.cause,
-            type: typeof error
+        logAnalysis('análise', 'error', 'Erro durante a análise', {
+            error: error.message,
+            stack: error.stack
         });
-        
-        let errorMessage = 'Erro desconhecido ao processar a imagem.';
-        let details = 'Verifique os logs do servidor para mais informações.';
-
-        if (error.message.includes('OCR.space não encontrada')) {
-            errorMessage = 'Erro de Configuração: API Key do OCR.space não encontrada';
-            details = 'Para resolver:\n' +
-                     '1. Acesse https://ocr.space/ocrapi\n' +
-                     '2. Registre-se para obter uma chave gratuita\n' +
-                     '3. Crie ou edite o arquivo .env.local na raiz do projeto\n' +
-                     '4. Adicione a linha: OCR_SPACE_API_KEY=sua_api_key_aqui\n' +
-                     '5. Reinicie o servidor de desenvolvimento';
-        } else if (error.response?.status === 401) {
-            errorMessage = 'Erro de Autenticação: API Key do OCR.space inválida';
-            details = 'Verifique se a API Key configurada em .env.local está correta';
-        }
-            
-        console.log(`Tempo total da requisição (erro): ${(performance.now() - reqStartTime).toFixed(2)}ms`);
         return NextResponse.json(
-            { 
-                error: errorMessage,
-                details: details
-            },
+            { error: error.message || 'Erro interno do servidor', logs: analysisLogs },
             { status: 500 }
         );
     }

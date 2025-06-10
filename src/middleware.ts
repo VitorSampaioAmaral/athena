@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { serverEvents } from './utils/serverEvents';
 
 // Configuração para usar o Edge Runtime
 export const runtime = 'experimental-edge';
@@ -40,6 +41,56 @@ export async function middleware(request: NextRequest) {
       return response;
     }
   }
+
+  // Captura logs do console original
+  const originalConsole = {
+    log: console.log,
+    info: console.info,
+    warn: console.warn,
+    error: console.error
+  };
+
+  // Sobrescreve os métodos do console
+  console.log = (...args: any[]) => {
+    const message = args.join(' ');
+    serverEvents.addLog({
+      timestamp: Date.now(),
+      type: 'info',
+      message
+    });
+    originalConsole.log(...args);
+  };
+
+  console.info = (...args: any[]) => {
+    const message = args.join(' ');
+    serverEvents.addLog({
+      timestamp: Date.now(),
+      type: 'info',
+      message
+    });
+    originalConsole.info(...args);
+  };
+
+  console.warn = (...args: any[]) => {
+    const message = args.join(' ');
+    serverEvents.addLog({
+      timestamp: Date.now(),
+      type: 'warning',
+      message
+    });
+    originalConsole.warn(...args);
+  };
+
+  console.error = (...args: any[]) => {
+    const message = args.join(' ');
+    serverEvents.addLog({
+      timestamp: Date.now(),
+      type: 'error',
+      message,
+      details: args.length > 1 ? args.slice(1) : undefined
+    });
+    originalConsole.error(...args);
+  };
 
   return NextResponse.next();
 }

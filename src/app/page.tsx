@@ -6,13 +6,29 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AnalysisProgress } from '@/components/AnalysisProgress';
+import { ImageUpload } from '@/components/ImageUpload';
+import { useSession } from 'next-auth/react';
+import { AuthModal } from '@/components/AuthModal';
+
+interface AnalysisStep {
+  id: string;
+  label: string;
+  status: 'waiting' | 'loading' | 'completed' | 'error';
+}
+
+const initialSteps: AnalysisStep[] = [
+  { id: 'text', label: 'Detectando texto na imagem', status: 'waiting' },
+  { id: 'colors', label: 'Analisando cores e padrões', status: 'waiting' },
+  { id: 'elements', label: 'Identificando elementos visuais', status: 'waiting' },
+  { id: 'interpretation', label: 'Interpretando conteúdo', status: 'waiting' },
+  { id: 'summary', label: 'Gerando resumo final', status: 'waiting' }
+];
 
 export default function Home() {
   const { isAuthenticated, loading } = useAuth();
+  const { data: session, status } = useSession();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [analysis, setAnalysis] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +36,10 @@ export default function Home() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 2;
+  const [steps, setSteps] = useState<AnalysisStep[]>(initialSteps);
+  const [result, setResult] = useState<string>('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [shouldSave, setShouldSave] = useState(false);
 
   const onDrop = async (acceptedFiles: File[]) => {
     if (!isAuthenticated) {
@@ -27,45 +47,120 @@ export default function Home() {
       return;
     }
 
-    if (acceptedFiles.length > 0) {
-      const file = acceptedFiles[0];
-      
-      // Validar o tipo do arquivo
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff'];
-      if (!validTypes.includes(file.type)) {
-        setError('Tipo de arquivo não suportado. Use JPG, PNG, GIF, BMP ou TIFF.');
-        return;
+    if (acceptedFiles.length === 0) {
+      setError('Por favor, selecione uma imagem.');
+      return;
+    }
+
+    const file = acceptedFiles[0];
+    if (!file.type.startsWith('image/')) {
+      setError('Por favor, selecione um arquivo de imagem válido.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setAnalysis('');
+    setSteps(initialSteps);
+    setIsAnalyzing(true);
+
+    // Função para atualizar status com timeout de segurança
+    const updateStepWithTimeout = async (stepId: string, status: 'loading' | 'completed', timeoutMs: number) => {
+      updateStepStatus(stepId, status);
+      if (status === 'loading') {
+        // Adiciona um timeout de segurança para evitar que a etapa fique travada
+        setTimeout(() => {
+          setSteps(currentSteps => {
+            const step = currentSteps.find(s => s.id === stepId);
+            if (step && step.status === 'loading') {
+              return currentSteps.map(s =>
+                s.id === stepId ? { ...s, status: 'error' } : s
+              );
+            }
+            return currentSteps;
+          });
+        }, timeoutMs);
       }
+    };
 
+    try {
+      // Atualiza status para leitura do arquivo
+      await updateStepWithTimeout('text', 'loading', 10000);
+      
+      // Lê o arquivo como base64
       const reader = new FileReader();
+      const imageData = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-      reader.onload = async (e) => {
-        if (e.target?.result) {
-          try {
-            // Extrair o base64 da string completa (remover o prefixo data:image/...)
-            const base64String = e.target.result.toString().split(',')[1];
-            setImageUrl(URL.createObjectURL(file));
-            setUploadProgress(0);
-            await analyzeImage(base64String);
-          } catch (error) {
-            console.error('Erro ao processar arquivo:', error);
-            setError('Erro ao processar o arquivo. Tente novamente.');
+      // Inicia a análise
+      await updateStepWithTimeout('text', 'completed', 0);
+      await updateStepWithTimeout('colors', 'loading', 15000);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos de timeout
+
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ image: imageData }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error('Falha na análise da imagem');
+        }
+
+        const data = await response.json();
+
+        // Atualiza os status baseado no debug retornado
+        if (data.debug) {
+          if (data.debug.textDetected) {
+            await updateStepWithTimeout('colors', 'completed', 0);
+            await updateStepWithTimeout('elements', 'loading', 15000);
+            await updateStepWithTimeout('elements', 'completed', 0);
+          }
+          if (data.debug.elementsCount > 0) {
+            await updateStepWithTimeout('interpretation', 'loading', 15000);
+            await updateStepWithTimeout('interpretation', 'completed', 0);
+          }
+          if (data.debug.hasInterpretation) {
+            await updateStepWithTimeout('summary', 'loading', 10000);
+            await updateStepWithTimeout('summary', 'completed', 0);
           }
         }
-      };
 
-      reader.onerror = () => {
-        setError('Erro ao ler o arquivo. Tente novamente.');
-      };
-
-      reader.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const progress = (e.loaded / e.total) * 100;
-          setUploadProgress(progress);
+        setAnalysis(data.analysis);
+        setRetryCount(0);
+      } catch (error: unknown) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('A análise demorou muito tempo. Por favor, tente novamente.');
         }
-      };
-
-      reader.readAsDataURL(file);
+        throw error;
+      }
+    } catch (err: any) {
+      console.error('Erro:', err);
+      setError(err.message || 'Ocorreu um erro ao analisar a imagem.');
+      
+      // Marca os steps não completados como erro
+      setSteps(currentSteps =>
+        currentSteps.map(step =>
+          step.status === 'loading' || step.status === 'waiting'
+            ? { ...step, status: 'error' }
+            : step
+        )
+      );
+    } finally {
+      setIsLoading(false);
+      setIsAnalyzing(false);
     }
   };
 
@@ -74,252 +169,270 @@ export default function Home() {
     accept: {
       'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.bmp', '.tiff']
     },
-    maxSize: 5242880 // 5MB
+    maxSize: 5242880
   });
 
-  const analyzeImage = async (imageBase64: string) => {
-    setIsLoading(true);
-    setError('');
-    
+  const updateStepStatus = (stepId: string, status: AnalysisStep['status']) => {
+    setSteps(currentSteps =>
+      currentSteps.map(step =>
+        step.id === stepId ? { ...step, status } : step
+      )
+    );
+  };
+
+  const handleAnalysis = async (imageData: string) => {
+    setIsAnalyzing(true);
+    setResult('');
+    setSteps(initialSteps);
+
     try {
+      // Faz a chamada à API
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ imageBase64 }),
+        body: JSON.stringify({ image: imageData }),
       });
 
+      if (!response.ok) {
+        throw new Error('Falha na análise');
+      }
+
       const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setResult(data.analysis);
+
+    } catch (error) {
+      console.error('Erro na análise:', error);
+      // Marca como erro apenas os steps que estavam em loading
+      setSteps(currentSteps => 
+        currentSteps.map(step => ({
+          ...step,
+          status: step.status === 'loading' ? 'error' : step.status
+        }))
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleStepUpdate = (stepId: string, status: string, progress?: number, message?: string) => {
+    setSteps(currentSteps => 
+      currentSteps.map(step => {
+        if (step.id === stepId) {
+          return {
+            ...step,
+            status: status as 'waiting' | 'loading' | 'completed' | 'error',
+            progress,
+            message
+          };
+        }
+        // Se um step está em loading, os próximos devem estar em waiting
+        if (step.status === 'loading' && status === 'completed') {
+          const currentIndex = currentSteps.findIndex(s => s.id === stepId);
+          const stepIndex = currentSteps.findIndex(s => s.id === step.id);
+          if (stepIndex > currentIndex) {
+            return { ...step, status: 'waiting' };
+          }
+        }
+        return step;
+      })
+    );
+  };
+
+  const handleImageSelect = async (file: File) => {
+    setError('');
+    setIsLoading(true);
+    setUploadProgress(0);
+    setSteps(initialSteps);
+    setIsAnalyzing(true);
+
+    try {
+      // Converte a imagem para base64
+      const reader = new FileReader();
+      reader.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const progress = (event.loaded / event.total) * 100;
+          setUploadProgress(progress);
+        }
+      };
+
+      reader.onload = async () => {
+        try {
+          const base64Image = reader.result as string;
+          setUploadProgress(100);
+
+          // Inicia a análise
+          handleStepUpdate('text', 'loading');
+          const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: base64Image }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Falha na análise');
+          }
+
+          const data = await response.json();
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          setResult(data.analysis);
+          handleStepUpdate('text', 'completed');
+          handleStepUpdate('colors', 'completed');
+          handleStepUpdate('elements', 'completed');
+          handleStepUpdate('interpretation', 'completed');
+          handleStepUpdate('summary', 'completed');
+
+        } catch (error) {
+          console.error('Erro ao processar imagem:', error);
+          setError('Erro ao processar a imagem. Por favor, tente novamente.');
+          setSteps(currentSteps =>
+            currentSteps.map(step => ({
+              ...step,
+              status: step.status === 'loading' || step.status === 'waiting' ? 'error' : step.status
+            }))
+          );
+        } finally {
+          setIsLoading(false);
+          setIsAnalyzing(false);
+        }
+      };
+
+      reader.onerror = () => {
+        setError('Erro ao ler o arquivo. Por favor, tente novamente.');
+        setIsLoading(false);
+        setIsAnalyzing(false);
+      };
+
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Erro ao selecionar imagem:', error);
+      setError('Erro ao selecionar a imagem. Por favor, tente novamente.');
+      setIsLoading(false);
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleSaveAnalysis = async () => {
+    if (!session) {
+      setShouldSave(true);
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/analysis/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageUrl,
+          result
+        }),
+      });
 
       if (!response.ok) {
-        if (response.status === 500 && data.error?.includes('Timeout') && retryCount < maxRetries) {
-          setRetryCount(prev => prev + 1);
-          setError(`Tentativa ${retryCount + 1} de ${maxRetries + 1}: Serviço sobrecarregado, tentando novamente...`);
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Espera 2 segundos
-          return analyzeImage(imageBase64);
-        }
-
-        throw new Error(data.error || 'Erro ao analisar a imagem');
+        throw new Error('Erro ao salvar análise');
       }
 
-      setAnalysis(data.analysis);
-      setRetryCount(0);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao processar a imagem';
-      
-      let userMessage = errorMessage;
-      if (errorMessage.includes('Timeout')) {
-        userMessage = 'O serviço está temporariamente sobrecarregado. Por favor, tente novamente em alguns minutos.';
-      } else if (errorMessage.includes('network')) {
-        userMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
-      }
-      
-      setError(userMessage);
-    } finally {
-      setIsLoading(false);
+      // Feedback de sucesso
+      alert('Análise salva com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      setError('Erro ao salvar análise. Tente novamente.');
+    }
+  };
+
+  const handleAuthSuccess = async () => {
+    if (shouldSave) {
+      setShouldSave(false);
+      await handleSaveAnalysis();
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 sm:p-6 md:p-8">
-      <Navbar />
-
-      <div className="max-w-4xl mx-auto space-y-6 pt-16">
-        <Card className="border-none shadow-none bg-transparent">
-          <CardHeader className="text-center space-y-2">
-            <CardTitle className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-              Análise de Imagens com IA
-            </CardTitle>
-            <CardDescription className="text-lg text-muted-foreground">
-              {isAuthenticated 
-                ? 'Arraste ou faça upload de uma imagem para análise detalhada'
-                : 'Faça login ou crie uma conta para começar a analisar imagens'}
-            </CardDescription>
-            <CardDescription className="text-sm text-muted-foreground max-w-lg mx-auto">
-              Nossa tecnologia OCR (Reconhecimento Óptico de Caracteres) permite extrair texto de imagens com alta precisão, 
-              identificando automaticamente o idioma e preservando a formatação original.
-            </CardDescription>
-          </CardHeader>
-
-          {!isAuthenticated && (
-            <CardFooter className="flex flex-col items-center gap-4 pt-4">
-              <div className="flex gap-4">
-                <Button variant="outline" size="lg" className="font-medium" asChild>
-                  <Link href="/login">Fazer Login</Link>
-                </Button>
-                <Button size="lg" className="font-medium" asChild>
-                  <Link href="/register">Criar Conta</Link>
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                É necessário fazer login para utilizar o serviço de análise de imagens
-              </p>
-            </CardFooter>
+    <main className="min-h-screen bg-gradient-to-b from-secondary-900 to-secondary-950 text-white p-8">
+      <div className="max-w-4xl mx-auto">
+        <header className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-primary-600">
+            Análise de Imagens
+          </h1>
+          <p className="text-lg text-secondary-400">
+            Faça upload de uma imagem para análise detalhada
+          </p>
+          {!session && (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="mt-4 text-primary-400 hover:text-primary-300 font-medium"
+            >
+              Faça login para salvar suas análises
+            </button>
           )}
-        </Card>
+        </header>
 
-        <Card 
-          {...getRootProps()}
-          className={`border-2 border-dashed relative cursor-pointer transition-all duration-300
-            ${isDragActive 
-              ? 'border-primary bg-primary/5 shadow-md' 
-              : 'border-muted hover:border-primary/50 hover:bg-muted/30'}
-            ${!isAuthenticated ? 'opacity-50 pointer-events-none' : ''}`}
-        >
-          <input {...getInputProps()} />
-          {!isAuthenticated && (
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center rounded-lg">
-              <div className="text-sm text-muted-foreground flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m0 0v2m0-2H8m2 0h2M3 12l2-2m0 0l7-7 7 7m-7-7v14" />
-                </svg>
-                Faça login para ativar o upload
-              </div>
-            </div>
-          )}
-          <CardContent className="py-8">
-            <div className="space-y-4 text-center">
-              <div className="w-12 h-12 mx-auto">
-                {isDragActive ? (
-                  <svg className="w-full h-full text-primary animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                ) : (
-                  <svg className="w-full h-full text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                )}
-              </div>
-              <div>
-                <p className="text-lg font-medium">
-                  {isDragActive ? (
-                    'Solte a imagem aqui...'
-                  ) : (
-                    <>
-                      Arraste uma imagem ou <span className="text-primary underline cursor-pointer">clique para selecionar</span>
-                    </>
-                  )}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Formatos aceitos: JPG, JPEG, PNG, GIF, BMP, TIFF (máx. 5MB)
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ImageUpload
+          onImageSelect={handleImageSelect}
+          isLoading={isLoading}
+          progress={uploadProgress}
+        />
 
-        {uploadProgress > 0 && uploadProgress < 100 && (
-          <Card>
-            <CardContent className="py-6">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Carregando imagem...</span>
-                  <span className="text-primary font-medium">{Math.round(uploadProgress)}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="bg-primary h-full rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {isAnalyzing && (
+          <AnalysisProgress
+            steps={steps}
+            onStepUpdate={handleStepUpdate}
+          />
         )}
 
-        {imageUrl && (
-          <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              <div className="relative w-full h-[250px] sm:h-[300px] md:h-[400px]">
-                <Image
-                  src={imageUrl}
-                  alt="Imagem carregada"
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  priority
-                  className="object-contain"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {isLoading && (
-          <Card>
-            <CardContent className="py-6">
-              <div className="space-y-6">
-                <div className="flex items-center justify-center gap-3">
-                  <div className="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full" />
-                  <p className="text-lg font-medium text-primary">Analisando imagem com OCR...</p>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <h4 className="font-medium text-sm mb-2">Dicas para melhor resultado:</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
-                    <li>Certifique-se que o texto está nítido e legível</li>
-                    <li>Evite imagens com texto em ângulos muito inclinados</li>
-                    <li>Prefira imagens com bom contraste entre texto e fundo</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {result && (
+          <div className="mt-8 space-y-4">
+            <div dangerouslySetInnerHTML={{ __html: result }} />
+            
+            <button
+              onClick={handleSaveAnalysis}
+              className="w-full py-3 px-4 bg-primary-600 text-white rounded-lg
+                       hover:bg-primary-700 transition-colors duration-200
+                       flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              {session ? 'Salvar Análise' : 'Fazer Login para Salvar'}
+            </button>
+          </div>
         )}
 
         {error && (
-          <Alert variant="destructive" className="animate-fade-in">
-            <AlertTitle className="flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Erro
-            </AlertTitle>
-            <AlertDescription>
-              <p className="mt-1">{error}</p>
-              {error.includes('sobrecarregado') && (
-                <p className="text-xs mt-2 text-destructive-foreground/80">
-                  Dica: O serviço está com alta demanda. Tente novamente em alguns minutos.
-                </p>
-              )}
-            </AlertDescription>
-          </Alert>
+          <div className="mt-8 p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-400">
+            {error}
+          </div>
         )}
 
-        {analysis && (
-          <Card className="animate-fade-in">
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-2xl">Análise da Imagem</CardTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setImageUrl('');
-                  setAnalysis('');
-                  setError('');
-                }}
-                className="hover:bg-muted"
-                title="Analisar nova imagem"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-neutral">
-                <div className="whitespace-pre-wrap">{analysis}</div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onSuccess={handleAuthSuccess}
+        />
       </div>
     </main>
   );

@@ -1,89 +1,65 @@
-## Documentação em Português para GitHub da Página OCR
+## Athena - Transcrição Inteligente de Imagens
 
-**Descrição:**
+Esta página web oferece uma ferramenta de transcrição inteligente de imagens acessível para pessoas cegas e com baixa visão. Ela permite converter imagens de texto em formato digital, facilitando a leitura e o acesso à informação.
 
-Esta página web oferece uma ferramenta de OCR (Optical Character Recognition) acessível para pessoas cegas e com baixa visão. Ela permite converter imagens de texto em formato digital, facilitando a leitura e o acesso à informação.
-
-**Funcionalidade Principal:**
-
-A função principal da página é extrair texto de imagens contendo texto impresso. O usuário pode inserir a URL de uma imagem online ou fazer o upload de uma imagem local. A ferramenta então processa a imagem e tenta extrair o texto contido nela. O texto extraído é apresentado em um formato digital acessível, como texto em tela ou narração de voz.
-
-**Recursos de Acessibilidade:**
+### Recursos de Acessibilidade
 
 A página foi projetada para ser acessível a pessoas cegas e com baixa visão. Os seguintes recursos de acessibilidade estão disponíveis:
 
-* **Suporte a Leitores de Tela:** A página é compatível com leitores de tela populares, como NVDA e JAWS. O texto extraído é automaticamente narrado pelo leitor de tela.
-* **Altos Contraste:** A página oferece um esquema de cores de alto contraste para facilitar a leitura para pessoas com baixa visão.
-* **Navegação por Teclado:** A página pode ser navegada completamente usando o teclado. Isso permite que os usuários controlem a página sem precisar usar um mouse.
-* **Legenda em Libras (Linguagem Brasileira de Sinais):** A página fornece legendas em Libras para instruções e mensagens importantes.
+* **Navegação por Teclado:** Todas as funcionalidades podem ser acessadas usando apenas o teclado.
+* **Alto Contraste:** A página oferece um esquema de cores de alto contraste para melhorar a legibilidade para pessoas com baixa visão.
+* **Textos Claros:** Todas as instruções e mensagens são escritas de forma clara e direta.
 
-**Como Usar:**
+### Como Usar
 
-1. **Acesse a Página:** Abra a página em seu navegador web.
-2. **Insira a URL ou Faça Upload da Imagem:**
-    * **URL:** Insira a URL da imagem online que contém o texto que você deseja extrair no campo de entrada.
-    * **Upload:** Clique no botão "Escolher Arquivo" para selecionar uma imagem local do seu computador.
-3. **Clique em "Transcrever":** Clique no botão "Transcrever" para iniciar o processo de OCR.
-4. **Acesse o Texto Extraído:**
-    * **Tela:** O texto extraído será exibido na tela.
-    * **Narração de Voz:** O texto extraído será narrado pelo seu leitor de tela.
-    * **Legenda em Libras:** As instruções e mensagens importantes serão legendadas em Libras.
+1. **Faça Login:** Entre com sua conta ou crie uma nova se ainda não tiver.
+2. **Selecione uma Imagem:** Clique no botão "Selecionar Imagem" ou arraste e solte uma imagem na área indicada.
+3. **Clique em "Transcrever":** Clique no botão "Transcrever" para iniciar o processo de análise.
+4. **Aguarde o Processamento:** O sistema irá processar a imagem e extrair o texto.
+5. **Revise o Resultado:** O texto extraído será exibido na tela e pode ser copiado ou lido por um leitor de tela.
 
-**Observações:**
+### Observações
 
-* A precisão do OCR pode variar dependendo da qualidade da imagem e da complexidade do texto.
-* A página ainda está em desenvolvimento e novos recursos de acessibilidade serão adicionados no futuro.
+* A precisão da transcrição pode variar dependendo da qualidade da imagem e da complexidade do texto.
+* Para melhores resultados, use imagens bem iluminadas e com texto legível.
+* O sistema suporta vários idiomas e formatos de texto.
 
 **Esperamos que esta ferramenta seja útil para pessoas cegas e com baixa visão!**
+
+## English Documentation
+
+### Athena - Intelligent Image Transcription
+
+This webpage provides an accessible image transcription tool for people with blindness or low vision. It allows them to convert images containing text into digital format, facilitating reading and access to information.
+
+### Accessibility Features
+
+The page is designed to be accessible to people with blindness or low vision. The following accessibility features are available:
+
+* **Keyboard Navigation:** All features can be accessed using only the keyboard.
+* **High Contrast:** The page offers a high-contrast color scheme to enhance readability for people with low vision.
+* **Clear Text:** All instructions and messages are written in a clear and direct manner.
+
+### How to Use
+
+1. **Log In:** Sign in with your account or create a new one if you don't have one.
+2. **Select an Image:** Click the "Select Image" button or drag and drop an image into the indicated area.
+3. **Click "Transcribe":** Click the "Transcribe" button to start the analysis process.
+4. **Wait for Processing:** The system will process the image and extract the text.
+5. **Review the Result:** The extracted text will be displayed on screen and can be copied or read by a screen reader.
+
+### Notes
+
+* The accuracy of transcription may vary depending on the image quality and the complexity of the text.
+* For best results, use well-lit images with legible text.
+* The system supports multiple languages and text formats.
+
+**We hope this tool is useful for people with blindness or low vision!**
 
 **Para mais informações:**
 
 * Sobre OCR [https://es.wiktionary.org/wiki/removido](https://es.wiktionary.org/wiki/removido)
 * Acessibilidade Web [https://es.wiktionary.org/wiki/removido](https://es.wiktionary.org/wiki/removido)
-* Libras [https://es.wiktionary.org/wiki/removido](https://es.wiktionary.org/wiki/removido)
-
-## English Version
-
-**Description:**
-
-This webpage provides an accessible OCR (Optical Character Recognition) tool for people with blindness or low vision. It allows them to convert images containing text into digital format, facilitating reading and access to information.
-
-**Core Functionality:**
-
-The primary function of this page is to extract text from images containing printed text. Users can either enter the URL of an online image or upload a local image. The tool then processes the image and attempts to extract the text within it. The extracted text is presented in an accessible digital format, such as on-screen text or voice narration.
-
-**Accessibility Features:**
-
-The page is designed to be accessible to people with blindness or low vision. The following accessibility features are available:
-
-* **Screen Reader Support:** The page is compatible with popular screen readers like NVDA and JAWS. The extracted text is automatically narrated by the screen reader.
-* **High Contrast:** The page offers a high-contrast color scheme to enhance readability for people with low vision.
-* **Keyboard Navigation:** The page can be navigated entirely using the keyboard. This allows users to control the page without requiring a mouse.
-* **Brazilian Sign Language (Libras) Captions:** The page provides Libras captions for instructions and important messages.
-
-**How to Use:**
-
-1. **Access the Page:** Open the page in your web browser.
-2. **Enter URL or Upload Image:**
-    * **URL:** Enter the URL of the online image containing the text you want to extract into the input field.
-    * **Upload:** Click the "Choose File" button to select a local image from your computer.
-3. **Click "Transcribe":** Click the "Transcribe" button to initiate the OCR process.
-4. **Access Extracted Text:**
-    * **On-Screen:** The extracted text will be displayed on the screen.
-    * **Voice Narration:** The extracted text will be narrated by your screen reader.
-    * **Libras Captions:** Instructions and important messages will be captioned in Libras.
-
-**Observations:**
-
-* The accuracy of OCR may vary depending on the image quality and the complexity of the text.
-* The page is still under development and new accessibility features will be added in the future.
-
-**We hope this tool is useful for people with blindness or low vision!**
-
-**For more information:**
-
-* About OCR [https://es.wiktionary.org/wiki/removido](https://es.wiktionary.org/wiki/removido)
-* Web Accessibility [https://es.wiktionary.org/wiki/removido](https://es.wiktionary.org/wiki/removido)
 * Libras [https://es.wiktionary.org/wiki/removido](https://es.wiktionary.org/wiki/removido)
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
