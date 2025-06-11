@@ -7,12 +7,8 @@ import styles from './ImageAnalysis.module.css';
 
 interface AnalysisResponse {
   analysis: string;
-  errors?: string[];
   debug?: {
-    textDetected: boolean;
-    elementsCount: number;
-    hasInterpretation: boolean;
-    processingTime: string;
+    processingTime: number;
     errorsCount: number;
   };
 }
@@ -29,12 +25,25 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
         startProgress();
         updateProgress(10); // Iniciando análise
 
+        // Converte base64 para Blob
+        const base64Data = imageData.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+        // Cria FormData e adiciona o arquivo
+        const formData = new FormData();
+        formData.append('file', blob, 'image.jpg');
+
+        updateProgress(30); // Upload iniciado
+
         const response = await fetch('/api/analyze', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ image: imageData }),
+          body: formData,
         });
 
         updateProgress(50); // Análise em andamento
@@ -45,9 +54,23 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
         }
 
         const data = await response.json();
-        setResult(data);
+        console.log('Resposta da API:', data); // Log para debug
+        
+        if (data.description) {
+          setResult({
+            analysis: data.description,
+            debug: {
+              processingTime: data.processingTime || 0,
+              errorsCount: 0
+            }
+          });
+        } else {
+          throw new Error('Resposta inválida da API');
+        }
+        
         updateProgress(100); // Análise concluída
       } catch (err) {
+        console.error('Erro na análise:', err);
         setError(err instanceof Error ? err.message : 'Erro ao analisar imagem');
         updateProgress(100);
       }
@@ -60,8 +83,8 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className={styles.errorContainer}>
-        <h3>Acesso Restrito</h3>
+      <div className="mt-4 rounded-lg bg-red-500/10 p-4 text-red-400">
+        <h3 className="font-bold">Acesso Restrito</h3>
         <p>Você precisa estar logado para analisar imagens.</p>
       </div>
     );
@@ -69,8 +92,8 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
 
   if (error) {
     return (
-      <div className={styles.errorContainer}>
-        <h3>Erro na Análise</h3>
+      <div className="mt-4 rounded-lg bg-red-500/10 p-4 text-red-400">
+        <h3 className="font-bold">Erro na Análise</h3>
         <p>{error}</p>
       </div>
     );
@@ -78,14 +101,14 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
 
   if (progress < 100 && progress > 0) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.progressBar}>
+      <div className="mt-4 rounded-lg bg-blue-500/10 p-4">
+        <div className="h-2 w-full rounded-full bg-gray-700">
           <div 
-            className={styles.progressFill} 
+            className="h-full rounded-full bg-blue-500 transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p>Analisando imagem... {progress}%</p>
+        <p className="mt-2 text-center text-blue-400">Analisando imagem... {progress}%</p>
       </div>
     );
   }
@@ -95,13 +118,15 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
   }
 
   return (
-    <div className={styles.analysisContainer}>
-      <div dangerouslySetInnerHTML={{ __html: result.analysis }} />
+    <div className="mt-4 rounded-lg bg-gray-800 p-4">
+      <div className="prose prose-invert max-w-none">
+        <div className="whitespace-pre-wrap">{result.analysis}</div>
+      </div>
       {result.debug && (
-        <div className={styles.debugInfo}>
+        <div className="mt-4 text-sm text-gray-400">
           <p>Tempo de processamento: {result.debug.processingTime}ms</p>
           {result.debug.errorsCount > 0 && (
-            <p className={styles.warningText}>
+            <p className="text-red-400">
               {result.debug.errorsCount} erro(s) encontrado(s) durante o processamento
             </p>
           )}

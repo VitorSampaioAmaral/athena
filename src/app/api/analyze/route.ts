@@ -757,61 +757,21 @@ interface ImageElement {
 
 async function detectElements(imageBuffer: Buffer): Promise<string> {
     try {
-        logAnalysis('detectElements', 'started', 'Iniciando detecção de elementos');
-
+        console.log('Iniciando análise completa da imagem...');
+        let detectedText = '';
+        let elementsDescription = '';
+        
         // Processa a imagem com Sharp para análise
         const metadata = await sharp(imageBuffer).metadata();
         const { width = 0, height = 0 } = metadata;
-
-        // Carrega o modelo de classificação de imagens (mais simples)
-        const classifier = await pipeline('image-classification', 'Xenova/mobilenet-v2');
-        logAnalysis('detectElements', 'completed', 'Modelo carregado');
-
-        // Processa a imagem
-        const processedImage = await sharp(imageBuffer)
-            .resize(224, 224, { fit: 'inside' })
-            .toBuffer();
         
-        const base64Image = `data:image/jpeg;base64,${processedImage.toString('base64')}`;
+        console.log('Metadados da imagem:', { width, height });
 
-        // Classifica a imagem
-        const predictions = await classifier(base64Image);
-
-        // Filtra as previsões com confiança maior que 20%
-        const significantPredictions = predictions.filter((p: any) => p.score > 0.2);
-
-        // Traduz as categorias para português
-        const translations: { [key: string]: string } = {
-            'person': 'pessoa',
-            'people': 'pessoas',
-            'dog': 'cachorro',
-            'cat': 'gato',
-            'bird': 'pássaro',
-            'car': 'carro',
-            'building': 'prédio',
-            'house': 'casa',
-            'tree': 'árvore',
-            'flower': 'flor',
-            'food': 'comida',
-            'book': 'livro',
-            'computer': 'computador',
-            'phone': 'telefone',
-            'table': 'mesa',
-            'chair': 'cadeira'
-        };
-
-        // Gera a descrição
-        let description = 'Na imagem, identifiquei: ';
-        description += significantPredictions
-            .map((p: any) => {
-                const confidence = Math.round(p.score * 100);
-                const label = translations[p.label.toLowerCase()] || p.label;
-                return `${label} (${confidence}% de confiança)`;
-            })
-            .join(', ');
+        // Análise básica da imagem
+        let description = 'Análise da imagem:\n';
 
         // Adiciona informações sobre o tamanho da imagem
-        description += `\n\nA imagem tem dimensões de ${width}x${height} pixels. `;
+        description += `\nDimensões: ${width}x${height} pixels\n`;
 
         // Adiciona informações sobre a orientação
         if (width && height) {
@@ -821,18 +781,167 @@ async function detectElements(imageBuffer: Buffer): Promise<string> {
             else if (aspectRatio < 0.8) orientation = 'vertical (retrato)';
             else orientation = 'quadrada';
 
-            description += `A imagem está em orientação ${orientation}.`;
+            description += `Orientação: ${orientation}\n`;
         }
 
-        logAnalysis('detectElements', 'completed', 'Elementos detectados com sucesso', {
-            predictionsCount: predictions.length,
-            significantCount: significantPredictions.length
-        });
+        // Detecta texto usando OCR.space
+        console.log('Iniciando detecção de texto...');
+        try {
+            const imageType = detectImageType(imageBuffer);
+            const base64Image = `data:image/${imageType};base64,${imageBuffer.toString('base64')}`;
+            
+            // Prepara os dados para OCR.space
+            const formData = new FormData();
+            formData.append('language', 'por');
+            formData.append('isOverlayRequired', 'false');
+            formData.append('detectOrientation', 'true');
+            formData.append('scale', 'true');
+            formData.append('OCREngine', '2');
+            formData.append('base64Image', base64Image);
+            formData.append('filetype', imageType.toUpperCase());
+
+            const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
+                method: 'POST',
+                headers: {
+                    'apikey': process.env.OCR_SPACE_API_KEY || '',
+                },
+                body: formData
+            });
+
+            if (!ocrResponse.ok) {
+                throw new Error('Falha na detecção de texto');
+            }
+
+            const ocrData = await ocrResponse.json();
+            if (ocrData.ParsedResults && ocrData.ParsedResults.length > 0) {
+                detectedText = ocrData.ParsedResults[0].ParsedText.trim();
+                if (detectedText) {
+                    description += `\nTexto detectado:\n${detectedText}\n`;
+                }
+            }
+        } catch (ocrError) {
+            console.error('Erro na detecção de texto:', ocrError);
+            description += '\nNão foi possível detectar texto na imagem.\n';
+        }
+
+        // Tenta usar o Hugging Face para detecção de elementos
+        console.log('Iniciando detecção de elementos...');
+        try {
+            // Configura o token do Hugging Face
+            const HUGGING_FACE_TOKEN = process.env.HUGGING_FACE_TOKEN;
+            if (!HUGGING_FACE_TOKEN) {
+                throw new Error('Token do Hugging Face não configurado');
+            }
+
+            // Processa a imagem para o formato adequado
+            const processedImage = await sharp(imageBuffer)
+                .resize(224, 224, { fit: 'inside' })
+                .toBuffer();
+
+            // Faz a requisição para o Hugging Face
+            const response = await fetch(
+                "https://api-inference.huggingface.co/models/microsoft/resnet-50",
+                {
+                    headers: {
+                        Authorization: `Bearer ${HUGGING_FACE_TOKEN}`,
+                        "Content-Type": "application/json"
+                    },
+                    method: "POST",
+                    body: JSON.stringify({
+                        inputs: {
+                            image: processedImage.toString('base64')
+                        }
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Falha na detecção de elementos');
+            }
+
+            const predictions = await response.json();
+            
+            if (Array.isArray(predictions) && predictions.length > 0) {
+                description += '\nElementos detectados:\n';
+                elementsDescription = predictions
+                    .filter((pred: any) => pred.score > 0.1)
+                    .map((pred: any) => {
+                        const confidence = Math.round(pred.score * 100);
+                        return `- ${pred.label} (${confidence}% de confiança)`;
+                    })
+                    .join('\n');
+                description += elementsDescription + '\n';
+            }
+        } catch (elementError) {
+            console.error('Erro na detecção de elementos:', elementError);
+            description += '\nNão foi possível detectar elementos específicos na imagem.\n';
+        }
+
+        // Analisa as cores da imagem
+        console.log('Iniciando análise de cores...');
+        const colorInfo = await analyzeColors(imageBuffer);
+        description += `\n${colorInfo}`;
+
+        // Gera interpretação do contexto usando transformers.js
+        console.log('Iniciando interpretação do contexto...');
+        try {
+            if (!generator) {
+                console.log('Carregando modelo T5...');
+                generator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
+                    quantized: true
+                });
+            }
+
+            // Cria um prompt detalhado para interpretação
+            const contextPrompt = `
+Interprete o seguinte conteúdo para uma pessoa com deficiência visual:
+
+TEXTO NA IMAGEM:
+${detectedText || 'Nenhum texto detectado'}
+
+ELEMENTOS DETECTADOS:
+${elementsDescription || 'Nenhum elemento específico detectado'}
+
+CARACTERÍSTICAS DA IMAGEM:
+- Dimensões: ${width}x${height} pixels
+- Orientação: ${width && height ? (width > height ? 'horizontal' : 'vertical') : 'desconhecida'}
+${colorInfo}
+
+Por favor, forneça uma descrição detalhada e acessível em português que:
+1. Explique o contexto geral da imagem
+2. Descreva a disposição dos elementos
+3. Interprete o significado ou propósito da imagem
+4. Mencione detalhes importantes para compreensão
+5. Mantenha um tom natural e informativo
+`;
+
+            console.log('Gerando interpretação...');
+            const interpretation = await generator(contextPrompt, {
+                max_new_tokens: 500,
+                temperature: 0.7,
+                top_p: 0.9,
+                repetition_penalty: 1.2,
+                do_sample: true
+            });
+
+            if (interpretation && interpretation[0]?.generated_text) {
+                description += '\n\nInterpretação para Acessibilidade:\n';
+                description += interpretation[0].generated_text.trim();
+            }
+
+        } catch (interpretError) {
+            console.error('Erro na interpretação do contexto:', interpretError);
+            description += '\n\nNão foi possível gerar uma interpretação detalhada do contexto.';
+        }
+
+        console.log('Análise completa concluída');
+        logAnalysis('detectElements', 'completed', 'Análise completa realizada com sucesso');
 
         return description;
+
     } catch (error) {
-        console.error('Erro ao detectar elementos:', error);
-        logAnalysis('detectElements', 'error', 'Erro ao detectar elementos', { error });
+        console.error('Erro ao analisar imagem:', error);
+        logAnalysis('detectElements', 'error', 'Erro ao analisar imagem', { error });
         throw error;
     }
 }
@@ -983,8 +1092,11 @@ export async function POST(request: Request) {
     const startTime = performance.now();
     
     try {
+        console.log('Iniciando processamento do POST...');
+        
         // Verifica se o request é multipart/form-data
         if (!request.headers.get('content-type')?.includes('multipart/form-data')) {
+            console.error('Tipo de conteúdo inválido:', request.headers.get('content-type'));
             return NextResponse.json({ error: 'Tipo de conteúdo inválido' }, { status: 400 });
         }
 
@@ -993,15 +1105,23 @@ export async function POST(request: Request) {
         const file = formData.get('file') as File;
 
         if (!file) {
+            console.error('Nenhum arquivo enviado');
             return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 });
         }
 
         // Verifica o tamanho do arquivo
         if (file.size > MAX_IMAGE_SIZE) {
+            console.error('Arquivo muito grande:', file.size);
             return NextResponse.json({ 
                 error: 'Arquivo muito grande. O tamanho máximo permitido é 5MB.' 
             }, { status: 400 });
         }
+
+        console.log('Arquivo recebido:', {
+            name: file.name,
+            type: file.type,
+            size: file.size
+        });
 
         // Converte o arquivo para Buffer
         const arrayBuffer = await file.arrayBuffer();
@@ -1017,11 +1137,16 @@ export async function POST(request: Request) {
             logAnalysis('cache', 'hit', 'Resultado encontrado no cache', {
                 processingTime: endTime - startTime
             });
-            return NextResponse.json({ description: cachedResult.result });
+            console.log('Retornando resultado do cache:', cachedResult.result);
+            return NextResponse.json({ 
+                description: cachedResult.result,
+                source: 'cache'
+            });
         }
 
         // Detecta elementos na imagem
         const description = await detectElements(buffer);
+        console.log('Análise concluída, resultado:', description);
 
         // Atualiza cache
         analysisCache.set(imageHash, { 
@@ -1034,14 +1159,28 @@ export async function POST(request: Request) {
             processingTime: endTime - startTime
         });
 
-        return NextResponse.json({ description });
+        // Retorna o resultado com headers CORS
+        return new NextResponse(JSON.stringify({ 
+            description,
+            source: 'analysis',
+            processingTime: endTime - startTime
+        }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            }
+        });
 
     } catch (error) {
         console.error('Erro durante o processamento:', error);
         logAnalysis('analysis', 'error', 'Erro durante o processamento', { error });
         
         return NextResponse.json({ 
-            error: 'Erro ao processar a imagem. Por favor, tente novamente.' 
+            error: 'Erro ao processar a imagem. Por favor, tente novamente.',
+            details: error instanceof Error ? error.message : 'Erro desconhecido'
         }, { status: 500 });
     }
 }
