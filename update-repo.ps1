@@ -5,13 +5,13 @@ $timestamp = Get-Date -Format "dd/MM/yyyy HH:mm"
 git add .
 
 # Cria um commit com a data/hora
-git commit -m "Atualização automática - $timestamp"
+git commit -m "Atualizacao automatica - $timestamp"
 
 # Faz push para a branch origin
 git push origin
 
 # Exibe mensagem de conclusão
-Write-Host "Repositório atualizado com sucesso!" -ForegroundColor Green
+Write-Host "Repositorio atualizado com sucesso!" -ForegroundColor Green
 Write-Host "Timestamp: $timestamp" -ForegroundColor Cyan
 
 # Pausa para ver o resultado
