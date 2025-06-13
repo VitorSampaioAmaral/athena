@@ -503,141 +503,237 @@ async function analyzeSymbolicElements(imageBuffer: Buffer): Promise<string> {
 
 // Função para analisar o significado da imagem usando InternVL3 14B
 async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
-  try {
-    // Converte o buffer para base64
-    const base64Image = imageBuffer.toString('base64');
-    
-    // Faz a requisição para o OpenRouter
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://github.com/yourusername/your-repo",
-        "X-Title": "Athena Image Analysis",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        "model": "opengvlab/internvl3-14b:free",
-        "messages": [
-          {
-            "role": "user",
-            "content": [
-              {
-                "type": "text",
-                "text": "Analyze this image in detail. Describe its visual elements, composition, colors, lighting, and any symbolic meanings. Consider both technical and artistic aspects."
-              },
-              {
-                "type": "image_url",
-                "image_url": {
-                  "url": `data:image/jpeg;base64,${base64Image}`
+  let retryCount = 0;
+  const maxRetries = 3;
+  const startTime = performance.now();
+  let lastValidResponse: string | null = null;
+  
+  while (retryCount < maxRetries) {
+    try {
+      const base64Image = imageBuffer.toString('base64');
+      
+      console.log(`Tentativa ${retryCount + 1} de ${maxRetries} para análise de imagem...`);
+      
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://github.com/VitorSampaioAmaral/athena",
+          "X-Title": "Athena Image Analysis",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": "opengvlab/internvl3-14b:free",
+          "messages": [
+            {
+              "role": "system",
+              "content": "Você é um analista de imagens especializado em identificar elementos visuais e seus significados. Sua resposta DEVE seguir EXATAMENTE este formato em português do Brasil: 'Imagem contendo cores [lista de cores], [elementos visuais como textos, símbolos, objetos, etc] com o significado [interpretação do significado geral da imagem]'. Mantenha a resposta concisa e direta."
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Analise esta imagem e responda seguindo EXATAMENTE o formato especificado: 'Imagem contendo cores [cores], [elementos] com o significado [significado]'. Use português do Brasil."
+                },
+                {
+                  "type": "image_url",
+                  "image_url": {
+                    "url": `data:image/jpeg;base64,${base64Image}`
+                  }
                 }
-              }
-            ]
-          }
-        ]
-      })
-    });
+              ]
+            }
+          ]
+        })
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(`Erro na requisição ao OpenRouter: ${response.statusText}${errorData ? ` - ${JSON.stringify(errorData)}` : ''}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error(`Erro na tentativa ${retryCount + 1}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        throw new Error(`Erro na requisição ao OpenRouter: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      const endTime = performance.now();
+      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+      
+      console.log(`Resposta da tentativa ${retryCount + 1} (${processingTime}s):`, JSON.stringify(result, null, 2));
+      
+      // Verifica se a resposta está em um formato diferente do esperado
+      const firstChoice = result.choices?.[0];
+      if (!firstChoice) {
+        console.log(`Tentativa ${retryCount + 1}: choices vazio, tentando novamente...`);
+        retryCount++;
+        continue;
+      }
+
+      // Tenta diferentes formatos de resposta
+      const content = 
+        (typeof firstChoice === 'string' ? firstChoice : null) ||
+        firstChoice.message?.content ||
+        firstChoice.content ||
+        firstChoice.text ||
+        firstChoice.response ||
+        (typeof firstChoice === 'object' ? JSON.stringify(firstChoice) : null);
+
+      if (content) {
+        console.log(`Análise concluída com sucesso na tentativa ${retryCount + 1} em ${processingTime} segundos`);
+        lastValidResponse = content;
+        return content;
+      }
+
+      console.log(`Tentativa ${retryCount + 1}: conteúdo não encontrado, tentando novamente...`);
+      retryCount++;
+      
+    } catch (error) {
+      const endTime = performance.now();
+      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+      console.error(`Erro na tentativa ${retryCount + 1} (${processingTime}s):`, error);
+      
+      if (lastValidResponse) {
+        console.log('Retornando última resposta válida encontrada');
+        return lastValidResponse;
+      }
+      
+      retryCount++;
+      
+      if (retryCount === maxRetries) {
+        console.error('Todas as tentativas falharam');
+        if (lastValidResponse) {
+          return lastValidResponse;
+        }
+        throw new Error('Não foi possível obter uma análise válida após várias tentativas');
+      }
+      
+      // Espera um pouco antes de tentar novamente
+      await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
     }
-
-    const result = await response.json();
-    
-    if (!result.choices?.[0]?.message?.content) {
-      throw new Error('Resposta inválida do InternVL3');
-    }
-
-    // Traduz a resposta para português
-    const translationResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://github.com/yourusername/your-repo",
-        "X-Title": "Athena Image Analysis",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        "model": "opengvlab/internvl3-14b:free",
-        "messages": [
-          {
-            "role": "user",
-            "content": `Translate this text to Brazilian Portuguese:\n\n${result.choices[0].message.content}`
-          }
-        ]
-      })
-    });
-
-    if (!translationResponse.ok) {
-      const errorData = await translationResponse.json().catch(() => null);
-      throw new Error(`Erro na tradução: ${translationResponse.statusText}${errorData ? ` - ${JSON.stringify(errorData)}` : ''}`);
-    }
-
-    const translationResult = await translationResponse.json();
-    
-    if (!translationResult.choices?.[0]?.message?.content) {
-      throw new Error('Resposta inválida na tradução');
-    }
-
-    return translationResult.choices[0].message.content;
-  } catch (error) {
-    console.error('Erro na análise de significado:', error);
-    return '';
   }
+
+  if (lastValidResponse) {
+    console.log('Retornando última resposta válida encontrada após todas as tentativas');
+    return lastValidResponse;
+  }
+
+  const endTime = performance.now();
+  const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+  throw new Error(`Número máximo de tentativas excedido após ${processingTime} segundos`);
 }
 
-// Função para gerar resposta usando análise local e InternVL3
-async function generateResponse(prompt: string, maxAttempts = 3): Promise<string> {
-  try {
-    // Limita o tamanho do prompt para evitar stack overflow
-    const limitedPrompt = prompt.slice(0, 4000);
-    
-    // Analisa o prompt para extrair informações relevantes
-    const lines = limitedPrompt.split('\n');
-    const description = lines.find(line => line.includes('Descrição:')) || '';
-    const colors = lines.find(line => line.includes('Cores:')) || '';
-    const elements = lines.find(line => line.includes('Elementos Simbólicos:')) || '';
-    
-    // Gera uma resposta baseada nas informações extraídas
-    let response = 'Análise da Imagem:\n\n';
-    
-    if (description) {
-      response += `${description}\n\n`;
+// Função para gerar resposta usando o modelo de texto
+async function generateResponse(prompt: string): Promise<string> {
+  let retryCount = 0;
+  const maxRetries = 3;
+  const startTime = performance.now();
+  let lastValidResponse: string | null = null;
+  
+  while (retryCount < maxRetries) {
+    try {
+      console.log(`Tentativa ${retryCount + 1} de ${maxRetries} para geração de resposta...`);
+      
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://github.com/VitorSampaioAmaral/athena",
+          "X-Title": "Athena Image Analysis",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": "opengvlab/internvl3-14b:free",
+          "messages": [
+            {
+              "role": "system",
+              "content": "Você é um assistente especializado em análise de imagens. Sua resposta DEVE ser em português do Brasil e seguir o formato: 'Imagem contendo cores [cores], [elementos] com o significado [significado]'. Mantenha a resposta concisa e direta."
+            },
+            {
+              "role": "user",
+              "content": `Com base na análise anterior: "${prompt}", forneça uma interpretação detalhada seguindo EXATAMENTE o formato: 'Imagem contendo cores [cores], [elementos] com o significado [significado]'. Use português do Brasil.`
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error(`Erro na tentativa ${retryCount + 1}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        throw new Error(`Erro na requisição ao OpenRouter: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      const endTime = performance.now();
+      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+      
+      console.log(`Resposta da tentativa ${retryCount + 1} (${processingTime}s):`, JSON.stringify(result, null, 2));
+      
+      // Verifica se a resposta está em um formato diferente do esperado
+      const firstChoice = result.choices?.[0];
+      if (!firstChoice) {
+        console.log(`Tentativa ${retryCount + 1}: choices vazio, tentando novamente...`);
+        retryCount++;
+        continue;
+      }
+
+      // Tenta diferentes formatos de resposta
+      const content = 
+        (typeof firstChoice === 'string' ? firstChoice : null) ||
+        firstChoice.message?.content ||
+        firstChoice.content ||
+        firstChoice.text ||
+        firstChoice.response ||
+        (typeof firstChoice === 'object' ? JSON.stringify(firstChoice) : null);
+
+      if (content) {
+        console.log(`Resposta gerada com sucesso na tentativa ${retryCount + 1} em ${processingTime} segundos`);
+        lastValidResponse = content;
+        return content;
+      }
+
+      console.log(`Tentativa ${retryCount + 1}: conteúdo não encontrado, tentando novamente...`);
+      retryCount++;
+      
+    } catch (error) {
+      const endTime = performance.now();
+      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+      console.error(`Erro na tentativa ${retryCount + 1} (${processingTime}s):`, error);
+      
+      if (lastValidResponse) {
+        console.log('Retornando última resposta válida encontrada');
+        return lastValidResponse;
+      }
+      
+      retryCount++;
+      
+      if (retryCount === maxRetries) {
+        console.error('Todas as tentativas falharam');
+        if (lastValidResponse) {
+          return lastValidResponse;
+        }
+        throw new Error('Não foi possível gerar uma resposta válida após várias tentativas');
+      }
+      
+      // Espera um pouco antes de tentar novamente
+      await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
     }
-    
-    if (colors) {
-      response += `${colors}\n\n`;
-    }
-    
-    if (elements) {
-      response += `${elements}\n\n`;
-    }
-    
-    // Adiciona uma conclusão baseada nas informações disponíveis
-    if (colors.includes('vermelho') || colors.includes('amarelo')) {
-      response += 'A imagem apresenta elementos de alerta ou atenção, com uso significativo de cores quentes.\n';
-    } else if (colors.includes('verde') || colors.includes('azul')) {
-      response += 'A imagem transmite uma sensação de tranquilidade e confiança, com predominância de cores frias.\n';
-    }
-    
-    if (elements.includes('formato paisagem')) {
-      response += 'O formato paisagem sugere uma visão ampla e abrangente da cena.\n';
-    } else if (elements.includes('formato retrato')) {
-      response += 'O formato retrato indica um foco mais específico e direcionado.\n';
-    }
-    
-    if (elements.includes('Alto contraste')) {
-      response += 'O alto contraste na imagem destaca elementos importantes e cria um impacto visual significativo.\n';
-    } else if (elements.includes('Baixo contraste')) {
-      response += 'O baixo contraste sugere uma abordagem mais sutil e suave.\n';
-    }
-    
-    return response;
-  } catch (error) {
-    console.error('Erro ao gerar resposta:', error);
-    throw error;
   }
+
+  if (lastValidResponse) {
+    console.log('Retornando última resposta válida encontrada após todas as tentativas');
+    return lastValidResponse;
+  }
+
+  const endTime = performance.now();
+  const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+  throw new Error(`Número máximo de tentativas excedido após ${processingTime} segundos`);
 }
 
 // Função para converter RGB para HSV
@@ -886,114 +982,46 @@ function generateImageHash(buffer: Buffer): string {
 
 // Função principal de análise
 export async function POST(request: Request) {
+    const startTime = performance.now();
+    
     try {
-        const startTime = performance.now();
-        
-        console.log('Iniciando processamento do POST...');
-        
-        // Verifica se o request é multipart/form-data
-        if (!request.headers.get('content-type')?.includes('multipart/form-data')) {
-            console.error('Tipo de conteúdo inválido:', request.headers.get('content-type'));
-            return NextResponse.json({ error: 'Tipo de conteúdo inválido' }, { status: 400 });
-        }
-
-        // Obtém o FormData do request
         const formData = await request.formData();
         const file = formData.get('file') as File;
-
+        
         if (!file) {
-            console.error('Nenhum arquivo enviado');
-            return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 });
+            return NextResponse.json(
+                { error: 'Nenhum arquivo enviado' },
+                { status: 400 }
+            );
         }
 
-        // Verifica o tamanho do arquivo
-        if (file.size > MAX_IMAGE_SIZE) {
-            console.error('Arquivo muito grande:', file.size);
-            return NextResponse.json({ 
-                error: 'Arquivo muito grande. O tamanho máximo permitido é 5MB.' 
-            }, { status: 400 });
-        }
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
 
-        console.log('Arquivo recebido:', {
-            name: file.name,
-            type: file.type,
-            size: file.size
-        });
-
-        // Converte o arquivo para Buffer
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        // Gera hash da imagem
-        const imageHash = generateImageHash(buffer);
-
-        // Verifica cache
-        const cachedResult = analysisCache.get(imageHash);
-        if (cachedResult && (Date.now() - cachedResult.timestamp) < MAX_CACHE_AGE) {
-            const endTime = performance.now();
-            logAnalysis('cache', 'hit', 'Resultado encontrado no cache', {
-                processingTime: endTime - startTime
-            });
-            console.log('Retornando resultado do cache:', cachedResult.result);
-            return NextResponse.json({ 
-                description: cachedResult.result,
-                source: 'cache'
-            });
-        }
-
-        // Analisa elementos visuais
-        const elements = await detectElements(buffer);
-        
-        // Analisa cores
-        const colors = await analyzeColors(buffer);
-        
-        // Analisa elementos simbólicos
-        const symbolicElements = await analyzeSymbolicElements(buffer);
-        
-        // Analisa significado usando InternVL3
-        const meaning = await analyzeImageMeaning(buffer);
+        // Analisa a imagem
+        const analysis = await analyzeImageMeaning(buffer);
         
         // Gera a resposta final
-        const response = await generateResponse(`
-          Descrição: ${meaning}
-          Cores: ${colors}
-          Elementos Simbólicos: ${symbolicElements}
-          Elementos Detectados: ${elements}
-        `);
-
-        // Atualiza cache
-        analysisCache.set(imageHash, { 
-            result: response, 
-            timestamp: Date.now() 
-        });
-
+        const response = await generateResponse(analysis);
+        
         const endTime = performance.now();
-        logAnalysis('analysis', 'completed', 'Análise concluída com sucesso', {
-            processingTime: endTime - startTime
-        });
-
-        // Retorna o resultado com headers CORS
-        return new NextResponse(JSON.stringify({ 
-            description: response,
-            source: 'analysis',
-            processingTime: endTime - startTime
-        }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            }
+        const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+        
+        return NextResponse.json({
+            analysis: response,
+            processingTime: `${processingTime} segundos`
         });
 
     } catch (error) {
-        console.error('Erro durante o processamento:', error);
-        logAnalysis('analysis', 'error', 'Erro durante o processamento', { error });
-        
-        return NextResponse.json({ 
-            error: 'Erro ao processar a imagem. Por favor, tente novamente.',
-            details: error instanceof Error ? error.message : 'Erro desconhecido'
-        }, { status: 500 });
+        const endTime = performance.now();
+        const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+        console.error(`Erro durante o processamento (${processingTime}s):`, error);
+        return NextResponse.json(
+            { 
+                error: error instanceof Error ? error.message : 'Erro desconhecido',
+                processingTime: `${processingTime} segundos`
+            },
+            { status: 500 }
+        );
     }
 }
