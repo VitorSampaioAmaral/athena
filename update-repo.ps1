@@ -8,7 +8,9 @@ git add .
 git commit -m "Atualizacao automatica - $timestamp"
 
 # Faz push para a branch origin
-git push origin
+git pull origin main
+
+git push origin main
 
 # Exibe mensagem de conclusão
 Write-Host "Repositorio atualizado com sucesso!" -ForegroundColor Green
