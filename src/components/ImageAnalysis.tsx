@@ -7,10 +7,9 @@ import styles from './ImageAnalysis.module.css';
 
 interface AnalysisResponse {
   analysis: string;
-  debug?: {
-    processingTime: number;
-    errorsCount: number;
-  };
+  processingTime: string;
+  status: 'success' | 'partial' | 'error';
+  error?: string;
 }
 
 export function ImageAnalysis({ imageData }: { imageData: string }) {
@@ -48,25 +47,23 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
 
         updateProgress(50); // Análise em andamento
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erro ao analisar imagem');
-        }
-
         const data = await response.json();
         console.log('Resposta da API:', data); // Log para debug
-        
-        if (data.description) {
-          setResult({
-            analysis: data.description,
-            debug: {
-              processingTime: data.processingTime || 0,
-              errorsCount: 0
-            }
-          });
-        } else {
-          throw new Error('Resposta inválida da API');
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Erro ao analisar imagem');
         }
+
+        if (data.status === 'error') {
+          throw new Error(data.error || 'Erro ao analisar imagem');
+        }
+
+        setResult({
+          analysis: data.analysis,
+          processingTime: data.processingTime,
+          status: data.status,
+          error: data.error
+        });
         
         updateProgress(100); // Análise concluída
       } catch (err) {
@@ -122,16 +119,14 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
       <div className="prose prose-invert max-w-none">
         <div className="whitespace-pre-wrap">{result.analysis}</div>
       </div>
-      {result.debug && (
-        <div className="mt-4 text-sm text-gray-400">
-          <p>Tempo de processamento: {result.debug.processingTime}ms</p>
-          {result.debug.errorsCount > 0 && (
-            <p className="text-red-400">
-              {result.debug.errorsCount} erro(s) encontrado(s) durante o processamento
-            </p>
-          )}
-        </div>
-      )}
+      <div className="mt-4 text-sm text-gray-400">
+        <p>Tempo de processamento: {result.processingTime}</p>
+        {result.status === 'partial' && result.error && (
+          <p className="text-yellow-400">
+            Aviso: {result.error}
+          </p>
+        )}
+      </div>
     </div>
   );
 } 

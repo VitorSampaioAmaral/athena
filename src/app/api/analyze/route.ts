@@ -508,8 +508,26 @@ async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
   const startTime = performance.now();
   let lastValidResponse: string | null = null;
   
+  // Função para calcular o delay com backoff exponencial
+  const getDelay = (attempt: number) => {
+    // Base delay de 3 segundos, multiplicado por 2^attempt
+    // Isso resulta em: 3s, 6s, 12s, 24s, etc.
+    const baseDelay = 3000;
+    const exponentialDelay = baseDelay * Math.pow(2, attempt);
+    // Adiciona um jitter aleatório entre 0 e 1 segundo para evitar thundering herd
+    const jitter = Math.random() * 1000;
+    return exponentialDelay + jitter;
+  };
+
   while (retryCount < maxRetries) {
     try {
+      // Se não for a primeira tentativa, aguarda o delay
+      if (retryCount > 0) {
+        const delay = getDelay(retryCount - 1);
+        console.log(`Aguardando ${(delay/1000).toFixed(1)} segundos antes da próxima tentativa...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
       const base64Image = imageBuffer.toString('base64');
       
       console.log(`Tentativa ${retryCount + 1} de ${maxRetries} para análise de imagem...`);
@@ -527,14 +545,14 @@ async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
           "messages": [
             {
               "role": "system",
-              "content": "Você é um analista de imagens especializado em identificar elementos visuais e seus significados. Sua resposta DEVE seguir EXATAMENTE este formato em português do Brasil: 'Imagem contendo cores [lista de cores], [elementos visuais como textos, símbolos, objetos, etc] com o significado [interpretação do significado geral da imagem]'. Mantenha a resposta concisa e direta."
+              "content": "Você é um analista de imagens especializado em identificar elementos visuais e seus significados. Sua resposta DEVE seguir EXATAMENTE este formato em português do Brasil: 'Imagem contendo cores [lista de cores], [elementos visuais como textos, símbolos, objetos, etc] com o significado [interpretação do significado geral da imagem]'. Mantenha a resposta concisa e direta. NUNCA retorne uma resposta vazia."
             },
             {
               "role": "user",
               "content": [
                 {
                   "type": "text",
-                  "text": "Analise esta imagem e responda seguindo EXATAMENTE o formato especificado: 'Imagem contendo cores [cores], [elementos] com o significado [significado]'. Use português do Brasil."
+                  "text": "Analise esta imagem e responda seguindo EXATAMENTE o formato especificado: 'Imagem contendo cores [cores], [elementos] com o significado [significado]'. Use português do Brasil. É OBRIGATÓRIO fornecer uma resposta."
                 },
                 {
                   "type": "image_url",
@@ -544,7 +562,10 @@ async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
                 }
               ]
             }
-          ]
+          ],
+          "temperature": 0.7,
+          "max_tokens": 500,
+          "stream": false
         })
       });
 
@@ -555,6 +576,14 @@ async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
           statusText: response.statusText,
           errorData
         });
+
+        // Se for erro de Too Many Requests, força um delay maior
+        if (response.status === 429) {
+          const rateLimitDelay = getDelay(retryCount) * 2; // Dobra o delay para rate limits
+          console.log(`Rate limit atingido. Aguardando ${(rateLimitDelay/1000).toFixed(1)} segundos...`);
+          await new Promise(resolve => setTimeout(resolve, rateLimitDelay));
+        }
+
         throw new Error(`Erro na requisição ao OpenRouter: ${response.statusText}`);
       }
 
@@ -580,6 +609,13 @@ async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
         firstChoice.text ||
         firstChoice.response ||
         (typeof firstChoice === 'object' ? JSON.stringify(firstChoice) : null);
+
+      // Verifica se a resposta está vazia
+      if (!content || content.trim() === '') {
+        console.log(`Tentativa ${retryCount + 1}: resposta vazia, tentando novamente...`);
+        retryCount++;
+        continue;
+      }
 
       if (content) {
         console.log(`Análise concluída com sucesso na tentativa ${retryCount + 1} em ${processingTime} segundos`);
@@ -609,9 +645,6 @@ async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
         }
         throw new Error('Não foi possível obter uma análise válida após várias tentativas');
       }
-      
-      // Espera um pouco antes de tentar novamente
-      await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
     }
   }
 
@@ -983,6 +1016,8 @@ function generateImageHash(buffer: Buffer): string {
 // Função principal de análise
 export async function POST(request: Request) {
     const startTime = performance.now();
+    let analysisResult: string | null = null;
+    let errorMessage: string | null = null;
     
     try {
         const formData = await request.formData();
@@ -998,30 +1033,79 @@ export async function POST(request: Request) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // Analisa a imagem
-        const analysis = await analyzeImageMeaning(buffer);
-        
-        // Gera a resposta final
-        const response = await generateResponse(analysis);
-        
+        try {
+            // Analisa a imagem
+            analysisResult = await analyzeImageMeaning(buffer);
+            console.log('Análise concluída com sucesso:', analysisResult);
+        } catch (error) {
+            console.error('Erro na análise da imagem:', error);
+            errorMessage = error instanceof Error ? error.message : 'Erro na análise da imagem';
+            // Continua para tentar gerar a resposta mesmo com erro na análise
+        }
+
+        try {
+            // Gera a resposta final
+            if (analysisResult) {
+                const response = await generateResponse(analysisResult);
+                console.log('Resposta gerada com sucesso:', response);
+                const endTime = performance.now();
+                const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+                
+                return NextResponse.json({
+                    analysis: response,
+                    processingTime: `${processingTime} segundos`,
+                    status: 'success'
+                });
+            }
+        } catch (error) {
+            console.error('Erro na geração da resposta:', error);
+            errorMessage = error instanceof Error ? error.message : 'Erro na geração da resposta';
+            // Continua para retornar o que temos
+        }
+
+        // Se chegou aqui, temos algum erro mas podemos ter uma análise
         const endTime = performance.now();
         const processingTime = ((endTime - startTime) / 1000).toFixed(2);
         
+        if (analysisResult) {
+            // Se temos uma análise, retornamos ela mesmo com erro
+            console.log('Retornando análise parcial:', analysisResult);
+            return NextResponse.json({
+                analysis: analysisResult,
+                processingTime: `${processingTime} segundos`,
+                status: 'partial',
+                error: errorMessage
+            });
+        }
+
+        // Se não temos nem análise nem resposta, retornamos o erro
+        console.error('Nenhuma análise disponível, retornando erro:', errorMessage);
         return NextResponse.json({
-            analysis: response,
-            processingTime: `${processingTime} segundos`
-        });
+            error: errorMessage || 'Erro desconhecido',
+            processingTime: `${processingTime} segundos`,
+            status: 'error'
+        }, { status: 500 });
 
     } catch (error) {
         const endTime = performance.now();
         const processingTime = ((endTime - startTime) / 1000).toFixed(2);
         console.error(`Erro durante o processamento (${processingTime}s):`, error);
-        return NextResponse.json(
-            { 
-                error: error instanceof Error ? error.message : 'Erro desconhecido',
-                processingTime: `${processingTime} segundos`
-            },
-            { status: 500 }
-        );
+        
+        // Se temos uma análise mesmo com erro geral, retornamos ela
+        if (analysisResult) {
+            console.log('Retornando análise parcial após erro geral:', analysisResult);
+            return NextResponse.json({
+                analysis: analysisResult,
+                processingTime: `${processingTime} segundos`,
+                status: 'partial',
+                error: error instanceof Error ? error.message : 'Erro desconhecido'
+            });
+        }
+        
+        return NextResponse.json({
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
+            processingTime: `${processingTime} segundos`,
+            status: 'error'
+        }, { status: 500 });
     }
 }
