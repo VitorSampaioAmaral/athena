@@ -1,0 +1,577 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 15 23 42;
+    --foreground: 255 255 255;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-[#0F172A] text-white antialiased;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-medium transition-all;
+    @apply bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg;
+    @apply hover:from-indigo-600 hover:to-purple-600 hover:scale-105 hover:shadow-xl;
+    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-outline {
+    @apply bg-transparent border-2 border-indigo-500 text-indigo-500;
+    @apply hover:bg-indigo-500 hover:text-white;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-3;
+    @apply text-white placeholder-gray-400;
+    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500;
+    @apply transition-all duration-200;
+  }
+
+  .card {
+    @apply relative overflow-hidden rounded-2xl;
+    @apply bg-gradient-to-b from-gray-800/80 to-gray-900/80;
+    @apply border border-gray-700/50 backdrop-blur-xl;
+    @apply p-6 shadow-xl transition-all duration-300;
+    @apply hover:shadow-indigo-500/10 hover:border-indigo-500/50;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500;
+  }
+
+  .glass {
+    @apply bg-white/[0.05] backdrop-blur-lg;
+    @apply border border-white/[0.1];
+  }
+}
+
+/* Animações */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3730a3;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4f46e5;
+}
+
+/* Estilos para as seções de análise */
+.transcription-text {
+  background-color: rgb(var(--background));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.color-analysis {
+  background-color: rgb(var(--background));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.elements-analysis {
+  background-color: rgb(var(--background));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.content-interpretation {
+  background-color: rgb(var(--background));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.summary {
+  background-color: rgb(var(--background));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-top: 2rem;
+  border-top: 2px solid rgb(var(--primary));
+}
+
+/* Estilos específicos para elementos dentro das seções */
+.transcription-text {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.color-analysis ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.color-analysis li {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.color-analysis li::before {
+  content: "•";
+  color: rgb(var(--primary));
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+}
+
+/* Estilo para as porcentagens */
+.color-analysis li span {
+  color: rgb(var(--muted-foreground));
+  font-size: 0.9rem;
+}
+
+/* Barra de progresso para as cores */
+.color-analysis li {
+  position: relative;
+}
+
+.color-analysis li::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 2px;
+  background-color: rgb(var(--primary));
+  opacity: 0.3;
+  width: var(--percentage, 0%);
+  transition: width 0.3s ease;
+}
+
+/* Ajustes para melhor espaçamento */
+.color-analysis ul {
+  margin: 1rem 0;
+}
+
+.elements-analysis ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.elements-analysis li {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+  position: relative;
+  line-height: 1.4;
+}
+
+.content-interpretation {
+  font-style: italic;
+  line-height: 1.8;
+  color: rgb(var(--foreground));
+  padding: 1.5rem 2rem;
+}
+
+.summary {
+  background: linear-gradient(to right, rgb(var(--primary)), rgb(var(--primary-dark)));
+  color: white;
+  text-align: center;
+  padding: 2rem;
+  margin-top: 2rem;
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.summary h3 {
+  color: white;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.summary p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Container principal da análise */
+.analysis-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: rgb(var(--background));
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.analysis-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: rgb(var(--foreground));
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgb(var(--primary));
+}
+
+/* Estilos para todas as seções */
+.transcription-text,
+.color-analysis,
+.elements-analysis,
+.content-interpretation,
+.summary {
+  background-color: rgb(var(--background));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Títulos das seções */
+.transcription-text h3,
+.color-analysis h3,
+.elements-analysis h3,
+.content-interpretation h3,
+.summary h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: rgb(var(--primary));
+  margin-bottom: 1rem;
+}
+
+/* Estilos específicos para cada seção */
+.transcription-text {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.color-analysis ul,
+.elements-analysis ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.color-analysis li,
+.elements-analysis li {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.color-analysis li::before,
+.elements-analysis li::before {
+  content: "•";
+  color: rgb(var(--primary));
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+}
+
+.content-interpretation {
+  font-style: italic;
+  line-height: 1.6;
+}
+
+.summary {
+  text-align: center;
+  background-color: rgb(var(--primary));
+  color: white;
+  border: none;
+}
+
+.summary h3 {
+  color: white;
+}
+
+.summary p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Estilos para os logs de análise */
+.analysis-logs {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: rgb(var(--background));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
+}
+
+.analysis-logs h3 {
+  color: rgb(var(--foreground));
+  margin-bottom: 1rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.log-container {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 1rem;
+}
+
+.log-entry {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 1rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.25;
+  transition: all 0.2s;
+}
+
+.log-entry.started {
+  background-color: rgb(var(--primary-50));
+  border-left: 3px solid rgb(var(--primary-400));
+}
+
+.log-entry.completed {
+  background-color: rgb(var(--success-50));
+  border-left: 3px solid rgb(var(--success-400));
+}
+
+.log-entry.error {
+  background-color: rgb(var(--destructive-50));
+  border-left: 3px solid rgb(var(--destructive-400));
+}
+
+.log-time {
+  color: rgb(var(--muted-foreground));
+  white-space: nowrap;
+}
+
+.log-stage {
+  font-weight: 500;
+  color: rgb(var(--foreground));
+}
+
+.log-status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.log-entry.started .log-status {
+  background-color: rgb(var(--primary-100));
+  color: rgb(var(--primary-700));
+}
+
+.log-entry.completed .log-status {
+  background-color: rgb(var(--success-100));
+  color: rgb(var(--success-700));
+}
+
+.log-entry.error .log-status {
+  background-color: rgb(var(--destructive-100));
+  color: rgb(var(--destructive-700));
+}
+
+.log-message {
+  color: rgb(var(--foreground));
+}
+
+.log-details {
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: rgb(var(--background));
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: rgb(var(--muted-foreground));
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+/* Estilos para os logs do servidor */
+.server-logs {
+  margin-top: 2rem;
+  border-top: 1px solid rgb(var(--border));
+  padding-top: 1rem;
+}
+
+.server-status {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: rgb(var(--success-100));
+  color: rgb(var(--success-700));
+}
+
+.status-indicator.compiling {
+  background-color: rgb(var(--warning-100));
+  color: rgb(var(--warning-700));
+}
+
+.status-indicator.error {
+  background-color: rgb(var(--destructive-100));
+  color: rgb(var(--destructive-700));
+}
+
+.status-indicator::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+}
+
+.status-indicator::before {
+  background-color: rgb(var(--success-500));
+}
+
+.status-indicator.compiling::before {
+  background-color: rgb(var(--warning-500));
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.status-indicator.error::before {
+  background-color: rgb(var(--destructive-500));
+}
+
+/* Container de logs do servidor */
+.server-logs .log-container {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 1rem;
+  background-color: rgb(var(--background));
+  border-radius: 0.375rem;
+  border: 1px solid rgb(var(--border));
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* Entradas de log do servidor */
+.server-logs .log-entry {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-left: 2px solid transparent;
+  padding-left: 0.5rem;
+}
+
+.server-logs .log-entry.info {
+  border-left-color: rgb(var(--primary-500));
+}
+
+.server-logs .log-entry.warning {
+  border-left-color: rgb(var(--warning-500));
+}
+
+.server-logs .log-entry.error {
+  border-left-color: rgb(var(--destructive-500));
+}
+
+.server-logs .log-time {
+  color: rgb(var(--muted-foreground));
+  white-space: nowrap;
+}
+
+.server-logs .log-message {
+  flex: 1;
+  word-break: break-word;
+}
+
+.server-logs .log-details {
+  margin-top: 0.25rem;
+  padding: 0.5rem;
+  background-color: rgb(var(--secondary-900));
+  border-radius: 0.25rem;
+  white-space: pre-wrap;
+  font-size: 0.75rem;
+  color: rgb(var(--muted-foreground));
+}
+
+/* Scrollbar personalizada para os logs */
+.server-logs .log-container::-webkit-scrollbar {
+  width: 0.375rem;
+}
+
+.server-logs .log-container::-webkit-scrollbar-track {
+  background: rgb(var(--secondary-900));
+  border-radius: 0.375rem;
+}
+
+.server-logs .log-container::-webkit-scrollbar-thumb {
+  background: rgb(var(--secondary-700));
+  border-radius: 0.375rem;
+}
+
+.server-logs .log-container::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--secondary-600));
+}
