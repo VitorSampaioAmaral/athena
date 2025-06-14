@@ -1,50 +1,52 @@
 import { NextResponse } from 'next/server'
-import { TranscriptionService } from '@/services/transcription.service'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { transcriptionService } from '@/services/transcriptionService'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    const session = await getServerSession(authOptions)
     
-    if (!body.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Usuário não autenticado' },
+        { error: 'Não autorizado' },
         { status: 401 }
       )
     }
 
-    const transcription = await TranscriptionService.create({
-      text: body.text,
-      imageUrl: body.imageUrl,
-      userId: body.userId
+    const data = await request.json()
+    const transcription = await transcriptionService.create({
+      userId: session.user.id,
+      imageUrl: data.imageUrl,
     })
     
-    return NextResponse.json(transcription, { status: 201 })
-  } catch (error: any) {
+    return NextResponse.json(transcription)
+  } catch (error) {
+    console.error('Erro ao criar transcrição:', error)
     return NextResponse.json(
-      { error: error.message || 'Erro interno do servidor' },
+      { error: 'Erro ao criar transcrição' },
       { status: 500 }
     )
   }
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-
-    if (!userId) {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Usuário não autenticado' },
+        { error: 'Não autorizado' },
         { status: 401 }
       )
     }
 
-    const transcriptions = await TranscriptionService.findByUserId(userId)
-    
+    const transcriptions = await transcriptionService.getByUserId(session.user.id)
     return NextResponse.json(transcriptions)
-  } catch (error: any) {
+  } catch (error) {
+    console.error('Erro ao buscar transcrições:', error)
     return NextResponse.json(
-      { error: error.message || 'Erro interno do servidor' },
+      { error: 'Erro ao buscar transcrições' },
       { status: 500 }
     )
   }

@@ -3,37 +3,76 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { ImageAnalysis } from '@/components/ImageAnalysis';
+import styles from './ImageUploader.module.css';
 
 export default function ImageUploader() {
   const [imageData, setImageData] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+
+  const validateFile = (file: File): boolean => {
+    // Verifica o tamanho do arquivo (máximo 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setValidationMessage('O arquivo é muito grande. O tamanho máximo é 10MB.');
+      return false;
+    }
+
+    // Verifica o tipo do arquivo
+    if (!file.type.startsWith('image/')) {
+      setValidationMessage('Por favor, selecione apenas arquivos de imagem.');
+      return false;
+    }
+
+    // Verifica a extensão do arquivo
+    const validExtensions = ['.jpeg', '.jpg', '.png', '.gif', '.webp'];
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!validExtensions.includes(fileExtension)) {
+      setValidationMessage('Formato de arquivo não suportado. Use: PNG, JPG, GIF ou WEBP.');
+      return false;
+    }
+
+    setValidationMessage('Arquivo válido!');
+    return true;
+  };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     try {
+      setIsValidating(true);
+      setError(null);
+      setValidationMessage(null);
+
       const file = acceptedFiles[0];
-      if (!file) return;
-
-      // Verifica o tamanho do arquivo (máximo 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        throw new Error('O arquivo é muito grande. O tamanho máximo é 10MB.');
+      if (!file) {
+        setValidationMessage('Nenhum arquivo selecionado.');
+        return;
       }
 
-      // Verifica o tipo do arquivo
-      if (!file.type.startsWith('image/')) {
-        throw new Error('Por favor, selecione apenas arquivos de imagem.');
+      if (!validateFile(file)) {
+        return;
       }
 
+      setIsLoading(true);
       const reader = new FileReader();
+      
       reader.onload = () => {
         setImageData(reader.result as string);
-        setError(null);
+        setValidationMessage('Arquivo carregado com sucesso!');
       };
+      
       reader.onerror = () => {
         setError('Erro ao ler o arquivo. Por favor, tente novamente.');
+        setValidationMessage(null);
       };
+      
       reader.readAsDataURL(file);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao processar a imagem');
+      setValidationMessage(null);
+    } finally {
+      setIsLoading(false);
+      setIsValidating(false);
     }
   }, []);
 
@@ -43,22 +82,39 @@ export default function ImageUploader() {
       'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
     },
     maxFiles: 1,
+    maxSize: 10 * 1024 * 1024, // 10MB
+    multiple: false,
+    disabled: isLoading || isValidating
   });
 
+  const handleClear = () => {
+    setImageData(null);
+    setError(null);
+    setValidationMessage(null);
+  };
+
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className={styles.uploaderContainer}>
       <div
         {...getRootProps()}
-        className={`relative cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors
-          ${isDragActive
-            ? 'border-primary-500 bg-primary-500/10'
-            : 'border-gray-600 hover:border-primary-500 hover:bg-primary-500/10'
-          }`}
+        className={`${styles.dropzone} ${
+          isLoading || isValidating
+            ? styles.dropzoneDisabled
+            : isDragActive
+            ? styles.dropzoneActive
+            : styles.dropzoneInactive
+        }`}
       >
         <input {...getInputProps()} />
         <div className="space-y-4">
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className={`${styles.uploadIcon} ${
+              isLoading || isValidating
+                ? styles.uploadIconDisabled
+                : isDragActive
+                ? styles.uploadIconActive
+                : ''
+            }`}
             stroke="currentColor"
             fill="none"
             viewBox="0 0 48 48"
@@ -72,25 +128,67 @@ export default function ImageUploader() {
             />
           </svg>
           <div className="text-center">
-            <p className="text-lg text-gray-300">
-              {isDragActive
+            <p className={`${styles.uploadText} ${
+              isLoading || isValidating
+                ? styles.uploadTextDisabled
+                : isDragActive
+                ? styles.uploadTextActive
+                : ''
+            }`}>
+              {isLoading
+                ? 'Processando imagem...'
+                : isValidating
+                ? 'Validando arquivo...'
+                : isDragActive
                 ? 'Solte a imagem aqui...'
                 : 'Arraste e solte uma imagem aqui, ou clique para selecionar'}
             </p>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className={`${styles.uploadSubtext} ${
+              isLoading || isValidating ? styles.uploadSubtextDisabled : ''
+            }`}>
               PNG, JPG, GIF ou WEBP até 10MB
             </p>
           </div>
         </div>
       </div>
 
+      {validationMessage && (
+        <div className={`${styles.validationMessage} ${
+          validationMessage.includes('sucesso')
+            ? styles.validationMessageSuccess
+            : styles.validationMessageError
+        }`}>
+          {validationMessage}
+        </div>
+      )}
+
       {error && (
-        <div className="mt-4 rounded-lg bg-red-500/10 p-4 text-red-400">
+        <div className={styles.errorMessage}>
           {error}
         </div>
       )}
 
+      <div className={styles.buttonContainer}>
+        <button
+          onClick={handleClear}
+          disabled={!imageData || isLoading || isValidating}
+          className={`${styles.actionButton} ${styles.secondaryButton}`}
+        >
+          Limpar
+        </button>
+      </div>
+
       {imageData && <ImageAnalysis imageData={imageData} />}
+      
+      {imageData && (
+        <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+          <h3 className="text-lg font-semibold mb-2">Resultado da Análise:</h3>
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <p>A imagem foi carregada com sucesso e está sendo analisada.</p>
+            <p className="mt-2">Aguarde enquanto processamos os detalhes da imagem...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

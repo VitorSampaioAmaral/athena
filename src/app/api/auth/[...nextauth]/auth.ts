@@ -32,15 +32,15 @@ export const authOptions: NextAuthOptions = {
 
                 return {
                     id: user.id,
-                    name: user.name,
+                    name: user.name || '',
                     email: user.email
                 };
             }
         })
     ],
     pages: {
-        signIn: '/',
-        error: '/'
+        signIn: '/login',
+        error: '/login'
     },
     callbacks: {
         async jwt({ token, user }) {
@@ -54,6 +54,11 @@ export const authOptions: NextAuthOptions = {
                 session.user.id = token.id as string;
             }
             return session;
+        },
+        async redirect({ url, baseUrl }) {
+            if (url.startsWith('/')) return `${baseUrl}${url}`;
+            else if (new URL(url).origin === baseUrl) return url;
+            return baseUrl;
         }
     },
     session: {

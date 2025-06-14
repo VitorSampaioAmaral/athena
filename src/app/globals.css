@@ -4,8 +4,26 @@
 
 @layer base {
   :root {
-    --background: 15 23 42;
-    --foreground: 255 255 255;
+    --background: 0 0% 0%;      /* preto */
+    --foreground: 0 0% 100%;    /* branco */
+    --card: 0 0% 0%;            /* preto */
+    --card-foreground: 0 0% 100%; /* branco */
+    --popover: 0 0% 0%;         /* preto */
+    --popover-foreground: 0 0% 100%; /* branco */
+    --primary: 0 0% 100%;       /* branco */
+    --primary-foreground: 0 0% 0%; /* preto */
+    --secondary: 0 0% 100%;     /* branco */
+    --secondary-foreground: 0 0% 0%; /* preto */
+    --muted: 0 0% 50%;          /* cinza */
+    --muted-foreground: 0 0% 100%; /* branco */
+    --accent: 0 0% 100%;        /* branco */
+    --accent-foreground: 0 0% 0%; /* preto */
+    --destructive: 0 0% 0%;     /* preto */
+    --destructive-foreground: 0 0% 100%; /* branco */
+    --border: 0 0% 50%;         /* cinza */
+    --input: 0 0% 50%;          /* cinza */
+    --ring: 0 0% 100%;          /* branco */
+    --radius: 0.5rem;
   }
 
   html {
@@ -13,28 +31,33 @@
   }
 
   body {
-    @apply bg-[#0F172A] text-white antialiased;
+    background: #000000 !important;
+    /* @apply bg-[#010B1A] text-foreground antialiased; */
+  }
+
+  * {
+    @apply border-border;
   }
 }
 
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-medium transition-all;
-    @apply bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg;
-    @apply hover:from-indigo-600 hover:to-purple-600 hover:scale-105 hover:shadow-xl;
-    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+    @apply bg-gradient-to-r from-cyan-500 to-emerald-600 text-white shadow-lg;
+    @apply hover:from-cyan-600 hover:to-emerald-700 hover:scale-105 hover:shadow-xl;
+    @apply focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-outline {
-    @apply bg-transparent border-2 border-indigo-500 text-indigo-500;
-    @apply hover:bg-indigo-500 hover:text-white;
+    @apply bg-transparent border-2 border-cyan-500 text-cyan-500;
+    @apply hover:bg-cyan-500 hover:text-white;
   }
 
   .input {
     @apply w-full rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-3;
     @apply text-white placeholder-gray-400;
-    @apply focus:outline-none focus:ring-2 focus:ring-indigo-500;
+    @apply focus:outline-none focus:ring-2 focus:ring-cyan-500;
     @apply transition-all duration-200;
   }
 
@@ -43,13 +66,13 @@
     @apply bg-gradient-to-b from-gray-800/80 to-gray-900/80;
     @apply border border-gray-700/50 backdrop-blur-xl;
     @apply p-6 shadow-xl transition-all duration-300;
-    @apply hover:shadow-indigo-500/10 hover:border-indigo-500/50;
+    @apply hover:shadow-cyan-500/10 hover:border-cyan-500/50;
   }
 }
 
 @layer utilities {
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-emerald-600;
   }
 
   .glass {
@@ -102,12 +125,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3730a3;
+  background: #0891b2;
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4f46e5;
+  background: #06b6d4;
 }
 
 /* Estilos para as seções de análise */
@@ -229,7 +252,7 @@
 }
 
 .summary {
-  background: linear-gradient(to right, rgb(var(--primary)), rgb(var(--primary-dark)));
+  background: linear-gradient(to right, rgb(var(--primary)), rgb(var(--secondary)));
   color: white;
   text-align: center;
   padding: 2rem;
@@ -332,7 +355,7 @@
 
 .summary {
   text-align: center;
-  background-color: rgb(var(--primary));
+  background: linear-gradient(to right, rgb(var(--primary)), rgb(var(--secondary)));
   color: white;
   border: none;
 }
@@ -574,4 +597,27 @@
 
 .server-logs .log-container::-webkit-scrollbar-thumb:hover {
   background: rgb(var(--secondary-600));
+}
+
+/* Estilos para o tema escuro */
+.dark {
+  --background: 0 0% 0%;      /* preto */
+  --foreground: 0 0% 100%;    /* branco */
+  --card: 0 0% 0%;            /* preto */
+  --card-foreground: 0 0% 100%; /* branco */
+  --popover: 0 0% 0%;         /* preto */
+  --popover-foreground: 0 0% 100%; /* branco */
+  --primary: 0 0% 100%;       /* branco */
+  --primary-foreground: 0 0% 0%; /* preto */
+  --secondary: 0 0% 100%;     /* branco */
+  --secondary-foreground: 0 0% 0%; /* preto */
+  --muted: 0 0% 50%;          /* cinza */
+  --muted-foreground: 0 0% 100%; /* branco */
+  --accent: 0 0% 100%;        /* branco */
+  --accent-foreground: 0 0% 0%; /* preto */
+  --destructive: 0 0% 0%;     /* preto */
+  --destructive-foreground: 0 0% 100%; /* branco */
+  --border: 0 0% 50%;         /* cinza */
+  --input: 0 0% 50%;          /* cinza */
+  --ring: 0 0% 100%;          /* branco */
 }

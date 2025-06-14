@@ -1,0 +1,87 @@
+.uploaderContainer {
+  @apply mx-auto max-w-2xl;
+}
+
+.dropzone {
+  @apply relative cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors;
+}
+
+.dropzoneActive {
+  @apply border-primary bg-primary/5;
+}
+
+.dropzoneInactive {
+  @apply border-muted bg-card/30 hover:border-primary hover:bg-primary/5;
+}
+
+.dropzoneDisabled {
+  @apply cursor-not-allowed opacity-50 border-muted bg-card/20;
+}
+
+.uploadIcon {
+  @apply mx-auto h-12 w-12 text-muted-foreground/80;
+}
+
+.uploadIconActive {
+  @apply text-primary/80;
+}
+
+.uploadIconDisabled {
+  @apply text-muted-foreground/40;
+}
+
+.uploadText {
+  @apply text-lg text-foreground/90;
+}
+
+.uploadTextActive {
+  @apply text-primary/90;
+}
+
+.uploadTextDisabled {
+  @apply text-muted-foreground/40;
+}
+
+.uploadSubtext {
+  @apply mt-2 text-sm text-muted-foreground/80;
+}
+
+.uploadSubtextDisabled {
+  @apply text-muted-foreground/40;
+}
+
+.errorMessage {
+  @apply mt-4 rounded-lg bg-destructive/5 p-4 text-destructive;
+}
+
+.validationMessage {
+  @apply mt-2 text-sm;
+}
+
+.validationMessageError {
+  @apply text-destructive;
+}
+
+.validationMessageSuccess {
+  @apply text-green-500/80;
+}
+
+.loadingSpinner {
+  @apply animate-spin h-5 w-5 text-primary/80;
+}
+
+.buttonContainer {
+  @apply mt-4 flex gap-4 justify-center;
+}
+
+.actionButton {
+  @apply px-4 py-2 rounded-lg transition-all duration-200 font-medium;
+}
+
+.primaryButton {
+  @apply bg-primary/80 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.secondaryButton {
+  @apply bg-muted/50 text-muted-foreground hover:bg-muted/70 disabled:opacity-50 disabled:cursor-not-allowed;
+} 

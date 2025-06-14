@@ -80,8 +80,8 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="mt-4 rounded-lg bg-red-500/10 p-4 text-red-400">
-        <h3 className="font-bold">Acesso Restrito</h3>
+      <div className={styles.errorContainer}>
+        <h3 className={styles.errorsTitle}>Acesso Restrito</h3>
         <p>Você precisa estar logado para analisar imagens.</p>
       </div>
     );
@@ -89,8 +89,8 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
 
   if (error) {
     return (
-      <div className="mt-4 rounded-lg bg-red-500/10 p-4 text-red-400">
-        <h3 className="font-bold">Erro na Análise</h3>
+      <div className={styles.errorContainer}>
+        <h3 className={styles.errorsTitle}>Erro na Análise</h3>
         <p>{error}</p>
       </div>
     );
@@ -98,14 +98,14 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
 
   if (progress < 100 && progress > 0) {
     return (
-      <div className="mt-4 rounded-lg bg-blue-500/10 p-4">
-        <div className="h-2 w-full rounded-full bg-gray-700">
+      <div className={styles.loadingContainer}>
+        <div className={styles.progressBar}>
           <div 
-            className="h-full rounded-full bg-blue-500 transition-all duration-300"
+            className={styles.progressFill}
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="mt-2 text-center text-blue-400">Analisando imagem... {progress}%</p>
+        <p className={styles.progressText}>Analisando imagem... {progress}%</p>
       </div>
     );
   }
@@ -115,14 +115,14 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
   }
 
   return (
-    <div className="mt-4 rounded-lg bg-gray-800 p-4">
+    <div className={styles.resultContainer}>
       <div className="prose prose-invert max-w-none">
-        <div className="whitespace-pre-wrap">{result.analysis}</div>
+        <div className={styles.resultText}>{result.analysis}</div>
       </div>
-      <div className="mt-4 text-sm text-gray-400">
+      <div className={styles.resultMeta}>
         <p>Tempo de processamento: {result.processingTime}</p>
         {result.status === 'partial' && result.error && (
-          <p className="text-yellow-400">
+          <p className={styles.warningText}>
             Aviso: {result.error}
           </p>
         )}

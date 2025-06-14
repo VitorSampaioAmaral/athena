@@ -1,43 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
+import { useSession, signOut } from 'next-auth/react';
 
 export function useAuth() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
+  const { data: session, status } = useSession();
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      setUser(null);
+      await signOut({ redirect: false });
       router.push('/login');
       router.refresh();
     } catch (error) {
@@ -46,9 +18,9 @@ export function useAuth() {
   };
 
   return {
-    user,
-    loading,
+    user: session?.user || null,
+    loading: status === 'loading',
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: status === 'authenticated'
   };
 } 

@@ -15,17 +15,30 @@ export function middleware(request: NextRequest) {
   }
 
   if (isRootPage) {
+    if (!token) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
     return NextResponse.redirect(new URL('/transcricao', request.url));
   }
 
   if (!token) {
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|transcricao|register).*)'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - login (login page)
+     * - register (register page)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|login|register).*)',
+  ],
 }; 

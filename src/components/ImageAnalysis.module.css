@@ -1,52 +1,59 @@
 .analysisContainer {
-  @apply mt-8 space-y-4 rounded-lg bg-gray-800/50 p-6;
+  @apply mt-4 rounded-lg bg-card/30 p-4 backdrop-blur-sm;
 }
 
 .errorContainer {
-  @apply mt-8 rounded-lg bg-red-500/10 p-6 text-center text-red-400;
+  @apply mt-4 rounded-lg bg-destructive/5 p-4 text-destructive;
 }
 
 .loadingContainer {
-  @apply mt-8 rounded-lg bg-gray-800/50 p-6 text-center;
+  @apply mt-4 rounded-lg bg-card/30 p-4 backdrop-blur-sm;
 }
 
 .progressBar {
-  @apply mb-4 h-2 overflow-hidden rounded-full bg-gray-700;
+  @apply h-2 w-full rounded-full bg-muted/50;
 }
 
 .progressFill {
-  @apply h-full rounded-full bg-primary-500 transition-all duration-300 ease-in-out;
+  @apply h-full rounded-full bg-primary/80 transition-all duration-300;
 }
 
-.debugInfo {
-  @apply mt-4 space-y-2 rounded-lg bg-gray-800/50 p-4 text-sm text-gray-400;
+.progressText {
+  @apply mt-2 text-center text-primary/90;
+}
+
+.resultContainer {
+  @apply mt-4 rounded-lg bg-card/30 p-4 backdrop-blur-sm;
+}
+
+.resultText {
+  @apply whitespace-pre-wrap text-foreground/90;
+}
+
+.resultMeta {
+  @apply mt-4 text-sm text-muted-foreground/80;
 }
 
 .warningText {
-  @apply text-yellow-400;
+  @apply text-yellow-400/80;
 }
 
-.errorContainer h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.2rem;
+.debugInfo {
+  @apply mt-4 rounded-lg bg-card/30 p-4 backdrop-blur-sm text-sm text-muted-foreground/80;
 }
 
 .errors-section {
-  background: #fff3e0;
-  border: 1px solid #ffe0b2;
-  border-radius: 4px;
-  padding: 1rem;
-  margin: 1rem 0;
+  @apply mt-4 rounded-lg bg-destructive/5 p-4 text-destructive;
 }
 
-.error-list {
-  list-style: none;
-  padding: 0;
-  margin: 0.5rem 0 0 0;
+.errors-title {
+  @apply font-bold;
 }
 
-.error-item {
-  color: #e65100;
-  padding: 0.25rem 0;
-  font-size: 0.9rem;
+.errors-list {
+  @apply mt-2 list-disc pl-4;
+}
+
+.errors-item {
+  @apply text-destructive/90;
 } 
