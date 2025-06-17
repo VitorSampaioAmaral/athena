@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useDropzone } from 'react-dropzone';
+import CreditStatus from '@/components/CreditStatus';
 
 export default function TranscribePage() {
   const router = useRouter();
@@ -11,10 +12,42 @@ export default function TranscribePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [transcription, setTranscription] = useState('');
+  const [visualDescription, setVisualDescription] = useState('');
+  const [context, setContext] = useState('');
+  const [ocrStatus, setOcrStatus] = useState<'checking' | 'available' | 'error'>('checking');
+
+  // Verificar status do OCR ao carregar a página
+  useEffect(() => {
+    const checkOCRStatus = async () => {
+      try {
+        const response = await fetch('/api/ocr-status');
+        if (response.ok) {
+          setOcrStatus('available');
+        } else {
+          setOcrStatus('error');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar status do OCR:', error);
+        setOcrStatus('error');
+      }
+    };
+
+    checkOCRStatus();
+  }, []);
 
   const onDrop = async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) {
       setError('Por favor, selecione uma imagem.');
+      return;
+    }
+
+    if (ocrStatus === 'error') {
+      setError('Sistema de transcrição via OpenRouter temporariamente indisponível. Verifique a configuração da API.');
+      return;
+    }
+
+    if (ocrStatus === 'checking') {
+      setError('Verificando disponibilidade do sistema de transcrição...');
       return;
     }
 
@@ -27,6 +60,8 @@ export default function TranscribePage() {
     setIsLoading(true);
     setError('');
     setTranscription('');
+    setVisualDescription('');
+    setContext('');
 
     try {
       console.log('Iniciando upload da imagem...');
@@ -42,6 +77,16 @@ export default function TranscribePage() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Erro na resposta da API:', errorData);
+        
+        if (response.status === 429) {
+          if (errorData.nextAvailable) {
+            const nextTime = new Date(errorData.nextAvailable).toLocaleTimeString();
+            throw new Error(`Aguarde antes de fazer outra transcrição. Próxima disponível às ${nextTime}`);
+          } else {
+            throw new Error(errorData.error || 'Limite diário de transcrições atingido');
+          }
+        }
+        
         throw new Error(errorData.error || 'Falha na transcrição da imagem');
       }
 
@@ -53,8 +98,23 @@ export default function TranscribePage() {
         throw new Error('Transcrição não encontrada na resposta');
       }
 
-      setTranscription(data.transcription);
-      console.log('Transcrição definida:', data.transcription);
+      // Processar resposta estruturada
+      const fullResponse = data.transcription;
+      
+      // Extrair seções usando regex
+      const textMatch = fullResponse.match(/=== TEXTO EXTRAÍDO ===\n([\s\S]*?)(?=\n=== DESCRIÇÃO VISUAL ===|$)/);
+      const visualMatch = fullResponse.match(/=== DESCRIÇÃO VISUAL ===\n([\s\S]*?)(?=\n=== CONTEXTO ===|$)/);
+      const contextMatch = fullResponse.match(/=== CONTEXTO ===\n([\s\S]*?)$/);
+
+      setTranscription(textMatch ? textMatch[1].trim() : fullResponse);
+      setVisualDescription(visualMatch ? visualMatch[1].trim() : '');
+      setContext(contextMatch ? contextMatch[1].trim() : '');
+      
+      console.log('Análise estruturada:', {
+        text: textMatch ? textMatch[1].trim() : fullResponse,
+        visual: visualMatch ? visualMatch[1].trim() : '',
+        context: contextMatch ? contextMatch[1].trim() : ''
+      });
     } catch (err: any) {
       console.error('Erro completo:', err);
       setError(err.message || 'Ocorreu um erro ao transcrever a imagem.');
@@ -91,8 +151,10 @@ export default function TranscribePage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="mb-8 text-center text-4xl font-bold">
-        Transcrição de Imagem
+        Análise Acessível de Imagens
       </h1>
+
+      <CreditStatus />
 
       <div
         {...getRootProps()}
@@ -118,6 +180,9 @@ export default function TranscribePage() {
             <p className="text-sm text-gray-500">
               Formatos aceitos: JPG, JPEG, PNG, GIF, WEBP (máx. 10MB)
             </p>
+            <p className="mt-2 text-sm text-blue-600">
+              ✨ Análise completa: texto, descrição visual e contexto para acessibilidade
+            </p>
           </div>
         )}
       </div>
@@ -129,16 +194,52 @@ export default function TranscribePage() {
       )}
 
       <div className="rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="mb-4 text-xl font-semibold">Resultado da Análise:</h2>
+        <h2 className="mb-4 text-xl font-semibold">Análise Completa da Imagem:</h2>
         {isLoading ? (
           <div>
             <p>A imagem foi carregada com sucesso e está sendo analisada.</p>
             <p className="mt-2">Aguarde enquanto processamos os detalhes da imagem...</p>
           </div>
-        ) : transcription ? (
-          <p className="whitespace-pre-wrap text-gray-700">{transcription}</p>
+        ) : transcription || visualDescription || context ? (
+          <div className="space-y-6">
+            {/* Seção de Texto Extraído */}
+            {transcription && (
+              <div className="border-l-4 border-blue-500 pl-4">
+                <h3 className="mb-2 text-lg font-semibold text-blue-700">
+                  📝 Texto Extraído
+                </h3>
+                <p className="whitespace-pre-wrap text-gray-700 bg-blue-50 p-3 rounded">
+                  {transcription}
+                </p>
+              </div>
+            )}
+
+            {/* Seção de Descrição Visual */}
+            {visualDescription && (
+              <div className="border-l-4 border-green-500 pl-4">
+                <h3 className="mb-2 text-lg font-semibold text-green-700">
+                  👁️ Descrição Visual
+                </h3>
+                <p className="whitespace-pre-wrap text-gray-700 bg-green-50 p-3 rounded">
+                  {visualDescription}
+                </p>
+              </div>
+            )}
+
+            {/* Seção de Contexto */}
+            {context && (
+              <div className="border-l-4 border-purple-500 pl-4">
+                <h3 className="mb-2 text-lg font-semibold text-purple-700">
+                  🎯 Contexto da Imagem
+                </h3>
+                <p className="whitespace-pre-wrap text-gray-700 bg-purple-50 p-3 rounded">
+                  {context}
+                </p>
+              </div>
+            )}
+          </div>
         ) : (
-          <p className="text-gray-500">Faça upload de uma imagem para ver o resultado da transcrição.</p>
+          <p className="text-gray-500">Faça upload de uma imagem para ver a análise completa.</p>
         )}
       </div>
     </div>

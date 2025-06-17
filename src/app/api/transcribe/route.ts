@@ -1,28 +1,130 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/auth';
 import { transcriptionService } from '@/services/transcriptionService';
-import { pipeline } from '@xenova/transformers';
+import { prisma } from '@/lib/prisma';
 
 const TIMEOUT_MS = 30000; // 30 segundos
+const MIN_DELAY_MS = 30000; // 30 segundos entre transcrições
+const MAX_DELAY_MS = 120000; // 2 minutos entre transcrições
 
-async function processImageWithTimeout(imageData: Buffer): Promise<string> {
+// Configuração do OpenRouter
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+
+async function transcribeWithOpenRouter(imageData: Buffer, mimeType: string = 'image/jpeg'): Promise<string> {
+  if (!OPENROUTER_API_KEY) {
+    throw new Error('Chave da API OpenRouter não configurada');
+  }
+
+  console.log('Iniciando transcrição via OpenRouter...');
+  
+  const base64Image = imageData.toString('base64');
+
+  const requestBody = {
+    model: "opengvlab/internvl3-14b:free", // Modelo gratuito com :free
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Analise esta imagem de forma completa e acessível. Forneça:\n\n1. TEXTO EXTRAÍDO: Todo o texto visível na imagem\n2. DESCRIÇÃO VISUAL: Descrição detalhada incluindo:\n   - Cores predominantes e contrastes\n   - Símbolos, ícones e elementos gráficos\n   - Layout e organização dos elementos\n   - Objetos, pessoas ou cenários visíveis\n   - Qualquer informação contextual importante\n\n3. CONTEXTO: O que a imagem representa ou comunica\n\nFormate a resposta assim:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]"
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${base64Image}`
+            }
+          }
+        ]
+      }
+    ]
+  };
+
+  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'HTTP-Referer': 'http://localhost:3000',
+      'X-Title': 'Athena OCR System',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error('Erro na API OpenRouter:', errorData);
+    throw new Error(`Erro na API OpenRouter: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  console.log('Resposta do OpenRouter:', data);
+
+  const text = data.choices?.[0]?.message?.content || '';
+  console.log('Texto extraído via OpenRouter:', text);
+  
+  return text.trim();
+}
+
+async function processImageWithTimeout(imageData: Buffer, mimeType: string): Promise<string> {
   console.log('Iniciando processamento da imagem...');
-  const ocr = await pipeline('image-to-text', 'Xenova/trocr-base-handwritten');
-  console.log('Modelo OCR carregado');
   
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error('Timeout ao processar a imagem')), TIMEOUT_MS);
   });
 
-  console.log('Iniciando OCR...');
-  const ocrPromise = ocr(imageData.toString('base64'));
-  const result = await Promise.race([ocrPromise, timeoutPromise]);
-  console.log('Resultado do OCR:', result);
+  console.log('Iniciando transcrição via OpenRouter...');
+  const transcriptionPromise = transcribeWithOpenRouter(imageData, mimeType);
+  const result = await Promise.race([transcriptionPromise, timeoutPromise]);
   
-  const text = result[0]?.generated_text || '';
-  console.log('Texto extraído:', text);
-  return text;
+  console.log('Transcrição concluída:', result);
+  return result;
+}
+
+async function checkCredits(userId: string): Promise<{ canProceed: boolean; nextAvailable?: Date; waitTime?: number }> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // Verificar limite diário (50 transcrições por dia)
+  const todayTranscriptions = await prisma.transcription.count({
+    where: {
+      userId,
+      createdAt: {
+        gte: today,
+        lt: tomorrow
+      }
+    }
+  });
+
+  if (todayTranscriptions >= 50) {
+    return { canProceed: false };
+  }
+
+  // Verificar delay desde última transcrição
+  const lastTranscription = await prisma.transcription.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  if (lastTranscription) {
+    const timeSinceLast = Date.now() - lastTranscription.createdAt.getTime();
+    const delayNeeded = Math.min(MAX_DELAY_MS, Math.max(MIN_DELAY_MS, timeSinceLast));
+    
+    if (timeSinceLast < delayNeeded) {
+      const nextAvailable = new Date(lastTranscription.createdAt.getTime() + delayNeeded);
+      return { 
+        canProceed: false, 
+        nextAvailable,
+        waitTime: delayNeeded - timeSinceLast
+      };
+    }
+  }
+
+  return { canProceed: true };
 }
 
 export async function POST(request: Request) {
@@ -36,6 +138,26 @@ export async function POST(request: Request) {
         { error: 'Não autorizado' },
         { status: 401 }
       );
+    }
+
+    // Verificar créditos antes de processar
+    const creditCheck = await checkCredits(session.user.id);
+    if (!creditCheck.canProceed) {
+      if (creditCheck.nextAvailable) {
+        return NextResponse.json(
+          { 
+            error: 'Aguarde antes de fazer outra transcrição',
+            nextAvailable: creditCheck.nextAvailable,
+            waitTime: creditCheck.waitTime
+          },
+          { status: 429 }
+        );
+      } else {
+        return NextResponse.json(
+          { error: 'Limite diário de transcrições atingido (50 por dia)' },
+          { status: 429 }
+        );
+      }
     }
 
     const formData = await request.formData();
@@ -53,7 +175,7 @@ export async function POST(request: Request) {
     const imageBuffer = await imageFile.arrayBuffer();
     const imageData = Buffer.from(imageBuffer);
 
-    const text = await processImageWithTimeout(imageData);
+    const text = await processImageWithTimeout(imageData, imageFile.type);
     console.log('Texto processado:', text);
 
     console.log('Salvando transcrição no banco de dados...');

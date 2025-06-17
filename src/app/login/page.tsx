@@ -14,6 +14,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    console.log('Iniciando processo de login...');
 
     try {
       const result = await signIn('credentials', {
@@ -22,12 +23,18 @@ export default function LoginPage() {
         redirect: false,
       });
 
+      console.log('Resultado do signIn:', result);
+
       if (result?.error) {
         setError(result.error);
+      } else if (result?.ok) {
+        console.log('Login bem-sucedido, redirecionando para /transcribe...');
+        window.location.href = '/transcribe';
       } else {
-        router.push('/');
+        setError('Login falhou, tente novamente.');
       }
     } catch (error) {
+      console.log('Erro capturado no catch:', error);
       setError('Ocorreu um erro ao fazer login');
     }
   };
@@ -95,6 +102,20 @@ export default function LoginPage() {
             >
               Não tem uma conta? Registre-se
             </Link>
+          </div>
+          
+          {/* Botão de teste para verificar se o router funciona */}
+          <div className="text-center text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                console.log('Testando router...');
+                router.push('/transcribe');
+              }}
+              className="font-medium text-green-600 hover:text-green-500"
+            >
+              Teste Router (ir para /transcribe)
+            </button>
           </div>
         </form>
       </div>

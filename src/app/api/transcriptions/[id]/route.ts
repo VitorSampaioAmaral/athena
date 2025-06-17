@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/auth'
 import { transcriptionService } from '@/services/transcriptionService'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -17,7 +17,8 @@ export async function GET(
       )
     }
 
-    const transcription = await transcriptionService.getById(params.id)
+    const { id } = await params
+    const transcription = await transcriptionService.getById(id)
     
     if (!transcription) {
       return NextResponse.json(
@@ -45,7 +46,7 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -57,7 +58,8 @@ export async function PATCH(
       )
     }
 
-    const transcription = await transcriptionService.getById(params.id)
+    const { id } = await params
+    const transcription = await transcriptionService.getById(id)
     
     if (!transcription) {
       return NextResponse.json(
@@ -74,7 +76,7 @@ export async function PATCH(
     }
 
     const data = await request.json()
-    const updatedTranscription = await transcriptionService.update(params.id, data)
+    const updatedTranscription = await transcriptionService.update(id, data)
 
     return NextResponse.json(updatedTranscription)
   } catch (error) {
@@ -88,7 +90,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -100,7 +102,8 @@ export async function DELETE(
       )
     }
 
-    const transcription = await transcriptionService.getById(params.id)
+    const { id } = await params
+    const transcription = await transcriptionService.getById(id)
     
     if (!transcription) {
       return NextResponse.json(
@@ -116,7 +119,7 @@ export async function DELETE(
       )
     }
 
-    await transcriptionService.delete(params.id)
+    await transcriptionService.delete(id)
 
     return NextResponse.json({ success: true })
   } catch (error) {
