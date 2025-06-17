@@ -18,32 +18,53 @@ export function ImageAnalysis({ imageData }: { imageData: string }) {
   const { progress, startProgress, updateProgress } = useProgress();
   const { isAuthenticated, user } = useAuth();
 
+  // Função para detectar se é uma URL ou base64
+  const isUrl = (data: string): boolean => {
+    return data.startsWith('http://') || data.startsWith('https://');
+  };
+
   useEffect(() => {
     const analyzeImage = async () => {
       try {
         startProgress();
         updateProgress(10); // Iniciando análise
 
-        // Converte base64 para Blob
-        const base64Data = imageData.split(',')[1];
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        let response;
+
+        if (isUrl(imageData)) {
+          // Se for URL, usa a API de transcrição de URL
+          updateProgress(30); // Processando URL
+          
+          response = await fetch('/api/transcribe-url', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: imageData }),
+          });
+        } else {
+          // Se for base64, usa a API de análise de arquivo
+          // Converte base64 para Blob
+          const base64Data = imageData.split(',')[1];
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+          // Cria FormData e adiciona o arquivo
+          const formData = new FormData();
+          formData.append('file', blob, 'image.jpg');
+
+          updateProgress(30); // Upload iniciado
+
+          response = await fetch('/api/analyze', {
+            method: 'POST',
+            body: formData,
+          });
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'image/jpeg' });
-
-        // Cria FormData e adiciona o arquivo
-        const formData = new FormData();
-        formData.append('file', blob, 'image.jpg');
-
-        updateProgress(30); // Upload iniciado
-
-        const response = await fetch('/api/analyze', {
-          method: 'POST',
-          body: formData,
-        });
 
         updateProgress(50); // Análise em andamento
 
