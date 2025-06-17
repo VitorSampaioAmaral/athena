@@ -21,6 +21,7 @@ model User {
   notificationsEnabled Boolean        @default(false)
   analyses            Analysis[]
   transcriptions      Transcription[]
+  collections         Collection[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 }
@@ -46,4 +47,28 @@ model Transcription {
   error       String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  collectionItems CollectionItem[]
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?  @db.Text
+  accessId    String   @unique // ID de 32 caracteres para acesso compartilhado
+  items       CollectionItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CollectionItem {
+  id             String       @id @default(cuid())
+  collectionId   String
+  collection     Collection   @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  transcriptionId String
+  transcription  Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([collectionId, transcriptionId])
 }

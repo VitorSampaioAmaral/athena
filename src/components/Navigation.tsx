@@ -38,6 +38,12 @@ export default function Navigation() {
                   Histórico
                 </Link>
                 <Link
+                  href="/collections"
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
+                  Coleções
+                </Link>
+                <Link
                   href="/settings"
                   className="text-gray-300 hover:text-white transition-colors"
                 >

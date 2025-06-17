@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import axios from 'axios';
 import sharp from 'sharp';
 import { pipeline } from '@xenova/transformers';
 import { performance } from 'perf_hooks';
 import crypto from 'crypto';
 import { broadcastProgress } from '../progress/route';
 import path from 'path';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/auth';
+import { transcriptionService } from '@/services/transcriptionService';
 
 // Tipos para análise
 type AnalysisStatus = 'started' | 'completed' | 'error' | 'hit';
@@ -118,122 +120,106 @@ function detectImageType(buffer: Buffer): string {
 // --- Funções de OCR e Tradução ---
 async function detectText(imageBuffer: Buffer): Promise<string> {
     try {
-        console.log('Iniciando OCR com OCR.space...');
+        console.log('Iniciando OCR com OpenRouter...');
         
         // Verifica se a API Key está configurada
-        if (!process.env.OCR_SPACE_API_KEY) {
-            console.error('API Key do OCR.space não encontrada no ambiente');
-            throw new Error('API Key do OCR.space não encontrada. Configure a variável de ambiente OCR_SPACE_API_KEY no arquivo .env.local');
+        if (!process.env.OPENROUTER_API_KEY) {
+            console.error('API Key do OpenRouter não encontrada no ambiente');
+            throw new Error('API Key do OpenRouter não encontrada. Configure a variável de ambiente OPENROUTER_API_KEY no arquivo .env.local');
         }
 
         // Detecta o tipo da imagem
         const imageType = detectImageType(imageBuffer);
         console.log('Tipo de imagem detectado:', imageType);
 
-        // Converte o buffer para base64 e formata corretamente
-        const base64Image = `data:image/${imageType};base64,${imageBuffer.toString('base64')}`;
+        // Converte o buffer para base64
+        const base64Image = `data:${imageType};base64,${imageBuffer.toString('base64')}`;
         console.log('Imagem convertida para base64', {
             imageSize: imageBuffer.length,
             base64Size: base64Image.length,
-            imageType,
-            base64Preview: base64Image.slice(0, 50) + '...'
+            imageType
         });
 
-        // Prepara os dados da requisição usando FormData
-        const formData = new FormData();
-        formData.append('language', 'por');
-        formData.append('isOverlayRequired', 'false');
-        formData.append('detectOrientation', 'true');
-        formData.append('scale', 'true');
-        formData.append('OCREngine', '2');
-        formData.append('base64Image', base64Image);
-        formData.append('filetype', imageType.toUpperCase());
+        // Configuração do OpenRouter
+        const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+        const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
-        // Faz a requisição para o OCR.space
-        console.log('Enviando requisição para OCR.space...', {
-            url: 'https://api.ocr.space/parse/image',
-            hasApiKey: !!process.env.OCR_SPACE_API_KEY,
-            apiKeyLength: process.env.OCR_SPACE_API_KEY?.length,
-            formDataKeys: Array.from(formData.keys())
-        });
+        const requestBody = {
+            model: "opengvlab/internvl3-14b:free",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: "Extraia apenas o texto visível nesta imagem. Retorne apenas o texto encontrado, sem comentários adicionais ou análises."
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                url: base64Image
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens: 1024,
+            temperature: 0.1
+        };
 
-        const response = await axios.post('https://api.ocr.space/parse/image', formData, {
+        console.log('Enviando requisição para OpenRouter...');
+
+        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+            method: 'POST',
             headers: {
-                'apikey': process.env.OCR_SPACE_API_KEY,
-                'Content-Type': 'multipart/form-data'
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'HTTP-Referer': 'http://localhost:3000',
+                'X-Title': 'Athena OCR System',
+                'Content-Type': 'application/json'
             },
-            timeout: 30000 // 30 segundos de timeout
+            body: JSON.stringify(requestBody)
         });
 
-        console.log('Resposta do OCR.space:', {
+        console.log('Resposta do OpenRouter:', {
             status: response.status,
-            statusText: response.statusText,
-            hasResults: !!response.data?.ParsedResults,
-            resultCount: response.data?.ParsedResults?.length,
-            errorMessage: response.data?.ErrorMessage,
-            exitCode: response.data?.OCRExitCode,
-            responseHeaders: response.headers
+            statusText: response.statusText
         });
 
-        if (response.data?.ErrorMessage) {
-            console.error('Erro retornado pelo OCR.space:', {
-                errorMessage: response.data.ErrorMessage,
-                exitCode: response.data.OCRExitCode,
-                isTimeout: response.data.IsTimeout
-            });
-            throw new Error(`Erro no OCR.space: ${response.data.ErrorMessage}`);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Erro na API OpenRouter:', errorData);
+            throw new Error(`Erro na API OpenRouter: ${response.status} ${response.statusText}`);
         }
 
-        if (!response.data?.ParsedResults) {
-            console.error('Resposta do OCR.space sem resultados:', response.data);
-            throw new Error('OCR.space retornou uma resposta sem resultados');
-        }
+        const data = await response.json();
+        console.log('Resposta do OpenRouter:', data);
 
-        if (response.data.ParsedResults[0]?.ParsedText) {
-            const detectedText = response.data.ParsedResults[0].ParsedText.trim();
-            console.log('Texto detectado:', {
-                length: detectedText.length,
-                preview: detectedText.slice(0, 100) + (detectedText.length > 100 ? '...' : ''),
-                hasContent: detectedText.length > 0,
-                firstChar: detectedText.charAt(0),
-                lastChar: detectedText.charAt(detectedText.length - 1)
-            });
-            return detectedText;
-        }
-
-        console.warn('OCR.space não detectou texto na imagem', {
-            responseData: response.data,
-            parsedResults: response.data.ParsedResults
+        const text = data.choices?.[0]?.message?.content || '';
+        console.log('Texto extraído via OpenRouter:', {
+            length: text.length,
+            preview: text.slice(0, 100) + (text.length > 100 ? '...' : ''),
+            hasContent: text.length > 0
         });
-        return 'Não foi possível detectar texto na imagem.';
+        
+        return text.trim() || 'Não foi possível detectar texto na imagem.';
     } catch (error: any) {
-        const errorDetails = {
+        console.error('Erro detalhado no OCR com OpenRouter:', {
             message: error.message,
             name: error.name,
             status: error.response?.status,
             statusText: error.response?.statusText,
-            responseData: error.response?.data,
-            stack: error.stack?.slice(0, 500),
-            isAxiosError: error.isAxiosError,
-            config: error.config ? {
-                url: error.config.url,
-                method: error.config.method,
-                timeout: error.config.timeout,
-                headers: error.config.headers
-            } : null
-        };
-
-        console.error('Erro detalhado no OCR:', errorDetails);
+            stack: error.stack?.slice(0, 500)
+        });
 
         // Mensagens de erro mais específicas
         if (error.message.includes('API Key')) {
-            throw new Error('Erro de configuração da API Key do OCR.space. Verifique se a chave está configurada corretamente no arquivo .env.local');
+            throw new Error('Erro de configuração da API Key do OpenRouter. Verifique se a chave está configurada corretamente no arquivo .env.local');
         } else if (error.response?.status === 401) {
-            throw new Error('API Key do OCR.space inválida. Verifique se a chave está correta no arquivo .env.local');
+            throw new Error('API Key do OpenRouter inválida. Verifique se a chave está correta no arquivo .env.local');
         } else if (error.response?.status === 403) {
-            throw new Error('Acesso negado ao OCR.space. Verifique se sua API Key tem permissões suficientes');
+            throw new Error('Acesso negado ao OpenRouter. Verifique se sua API Key tem permissões suficientes');
         } else if (error.code === 'ECONNABORTED') {
-            throw new Error('Timeout na conexão com OCR.space. O serviço pode estar sobrecarregado, tente novamente mais tarde');
+            throw new Error('Timeout na conexão com OpenRouter. O serviço pode estar sobrecarregado, tente novamente mais tarde');
         }
 
         throw error;
@@ -545,14 +531,14 @@ async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
           "messages": [
             {
               "role": "system",
-              "content": "Você é um analista de imagens especializado em identificar elementos visuais e seus significados. Sua resposta DEVE seguir EXATAMENTE este formato em português do Brasil: 'Imagem contendo cores [lista de cores], [elementos visuais como textos, símbolos, objetos, etc] com o significado [interpretação do significado geral da imagem]'. Mantenha a resposta concisa e direta. NUNCA retorne uma resposta vazia."
+              "content": "Você é um especialista em análise de imagens e acessibilidade. Como assistente de descrição de imagens, sua tarefa é fornecer uma análise detalhada e acessível em português. Foque em ajudar pessoas com deficiência visual a compreender completamente o conteúdo."
             },
             {
               "role": "user",
               "content": [
                 {
                   "type": "text",
-                  "text": "Analise esta imagem e responda seguindo EXATAMENTE o formato especificado: 'Imagem contendo cores [cores], [elementos] com o significado [significado]'. Use português do Brasil. É OBRIGATÓRIO fornecer uma resposta."
+                  "text": "Analise esta imagem de forma completa e acessível. Forneça:\n\n1. TEXTO EXTRAÍDO: Todo o texto visível na imagem\n2. DESCRIÇÃO VISUAL: Descrição detalhada incluindo:\n   - Cores predominantes e contrastes\n   - Símbolos, ícones e elementos gráficos\n   - Layout e organização dos elementos\n   - Objetos, pessoas ou cenários visíveis\n   - Qualquer informação contextual importante\n\n3. CONTEXTO: O que a imagem representa ou comunica\n\nFormate a resposta assim:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]"
                 },
                 {
                   "type": "image_url",
@@ -564,7 +550,7 @@ async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
             }
           ],
           "temperature": 0.7,
-          "max_tokens": 500,
+          "max_tokens": 2048,
           "stream": false
         })
       });
@@ -682,13 +668,15 @@ async function generateResponse(prompt: string): Promise<string> {
           "messages": [
             {
               "role": "system",
-              "content": "Você é um assistente especializado em análise de imagens. Sua resposta DEVE ser em português do Brasil e seguir o formato: 'Imagem contendo cores [cores], [elementos] com o significado [significado]'. Mantenha a resposta concisa e direta."
+              "content": "Você é um assistente especializado em análise de imagens. Sua resposta DEVE ser em português do Brasil e seguir o formato:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]\n\nUse português do Brasil e mantenha a resposta acessível e detalhada."
             },
             {
               "role": "user",
-              "content": `Com base na análise anterior: "${prompt}", forneça uma interpretação detalhada seguindo EXATAMENTE o formato: 'Imagem contendo cores [cores], [elementos] com o significado [significado]'. Use português do Brasil.`
+              "content": `Com base na análise anterior: "${prompt}", forneça uma interpretação detalhada seguindo o formato:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]\n\nUse português do Brasil e mantenha a resposta acessível e detalhada.`
             }
-          ]
+          ],
+          "temperature": 0.7,
+          "max_tokens": 2048
         })
       });
 
@@ -1020,6 +1008,17 @@ export async function POST(request: Request) {
     let errorMessage: string | null = null;
     
     try {
+        // Verificar autenticação
+        const session = await getServerSession(authOptions);
+        
+        if (!session?.user?.id) {
+            console.log('Usuário não autorizado');
+            return NextResponse.json(
+                { error: 'Não autorizado' },
+                { status: 401 }
+            );
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
         
@@ -1051,10 +1050,22 @@ export async function POST(request: Request) {
                 const endTime = performance.now();
                 const processingTime = ((endTime - startTime) / 1000).toFixed(2);
                 
+                // Salvar no banco de dados
+                console.log('Salvando análise no banco de dados...');
+                const transcription = await transcriptionService.create({
+                    userId: session.user.id,
+                    imageUrl: '', // URL da imagem será atualizada depois
+                    text: response,
+                    confidence: 1.0,
+                    status: 'completed'
+                });
+                console.log('Análise salva:', transcription);
+                
                 return NextResponse.json({
                     analysis: response,
                     processingTime: `${processingTime} segundos`,
-                    status: 'success'
+                    status: 'success',
+                    id: transcription.id
                 });
             }
         } catch (error) {
