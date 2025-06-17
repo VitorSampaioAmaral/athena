@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { CreateCollectionModal } from '@/components/CreateCollectionModal';
-import { ImportCollectionModal } from '@/components/ImportCollectionModal';
 
 interface Transcription {
   id: string;
@@ -105,10 +104,6 @@ export default function TranscricoesPage() {
     toast.success('Transcrição adicionada à coleção com sucesso!');
   };
 
-  const handleCollectionImported = () => {
-    toast.success('Coleção importada com sucesso!');
-  };
-
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900">
@@ -122,7 +117,6 @@ export default function TranscricoesPage() {
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold text-white">Histórico de Transcrições</h1>
         <div className="space-x-4">
-          <ImportCollectionModal onCollectionImported={handleCollectionImported} />
           <button
             onClick={handleBackup}
             className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"

@@ -3,8 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth'
 import { collectionService } from '@/services/collectionService'
 
-export async function GET(request: Request, context: any) {
-  const { params } = await context;
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   try {
     const session = await getServerSession(authOptions)
     
@@ -15,7 +18,7 @@ export async function GET(request: Request, context: any) {
       )
     }
 
-    const collection = await collectionService.getById(params.id)
+    const collection = await collectionService.getById(id)
     
     if (!collection) {
       return NextResponse.json(
@@ -42,8 +45,11 @@ export async function GET(request: Request, context: any) {
   }
 }
 
-export async function DELETE(request: Request, context: any) {
-  const { params } = await context;
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   try {
     const session = await getServerSession(authOptions)
     
@@ -55,7 +61,7 @@ export async function DELETE(request: Request, context: any) {
     }
 
     // Verificar se a coleção pertence ao usuário
-    const collection = await collectionService.getById(params.id)
+    const collection = await collectionService.getById(id)
     if (!collection || collection.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Coleção não encontrada ou não autorizada' },
@@ -63,7 +69,7 @@ export async function DELETE(request: Request, context: any) {
       )
     }
 
-    await collectionService.delete(params.id)
+    await collectionService.delete(id)
     
     return NextResponse.json({ message: 'Coleção excluída com sucesso' })
   } catch (error) {
@@ -75,8 +81,11 @@ export async function DELETE(request: Request, context: any) {
   }
 }
 
-export async function PUT(request: Request, context: any) {
-  const { params } = await context;
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   try {
     const session = await getServerSession(authOptions)
     
@@ -90,7 +99,7 @@ export async function PUT(request: Request, context: any) {
     const data = await request.json()
 
     // Verificar se a coleção pertence ao usuário
-    const collection = await collectionService.getById(params.id)
+    const collection = await collectionService.getById(id)
     if (!collection || collection.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Coleção não encontrada ou não autorizada' },
@@ -98,7 +107,7 @@ export async function PUT(request: Request, context: any) {
       )
     }
 
-    const updatedCollection = await collectionService.update(params.id, {
+    const updatedCollection = await collectionService.update(id, {
       name: data.name,
       description: data.description,
     })

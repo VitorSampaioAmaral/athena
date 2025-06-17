@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
+import { ImportCollectionModal } from '@/components/ImportCollectionModal';
 
 interface Collection {
   id: string;
@@ -81,6 +82,11 @@ export default function CollectionsPage() {
     }
   };
 
+  const handleCollectionImported = () => {
+    toast.success('Coleção importada com sucesso!');
+    fetchCollections(); // Recarregar a lista de coleções
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900">
@@ -93,19 +99,22 @@ export default function CollectionsPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold text-white">Minhas Coleções</h1>
-        <Button
-          onClick={() => router.push('/transcricoes')}
-          variant="outline"
-        >
-          Voltar às Transcrições
-        </Button>
+        <div className="space-x-4">
+          <ImportCollectionModal onCollectionImported={handleCollectionImported} />
+          <Button
+            onClick={() => router.push('/transcricoes')}
+            variant="outline"
+          >
+            Voltar às Transcrições
+          </Button>
+        </div>
       </div>
 
       {collections.length === 0 ? (
         <div className="rounded-lg bg-gray-800 p-8 text-center border border-gray-700">
           <p className="text-gray-300">Nenhuma coleção encontrada</p>
           <p className="text-gray-400 mt-2">
-            Crie sua primeira coleção adicionando transcrições do histórico
+            Crie sua primeira coleção adicionando transcrições do histórico ou importe uma coleção existente
           </p>
         </div>
       ) : (

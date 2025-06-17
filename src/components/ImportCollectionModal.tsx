@@ -14,6 +14,7 @@ export function ImportCollectionModal({ onCollectionImported }: ImportCollection
   const [accessId, setAccessId] = useState('')
   const [loading, setLoading] = useState(false)
   const [collection, setCollection] = useState<any>(null)
+  const [importing, setImporting] = useState(false)
 
   const handleImport = async () => {
     if (!accessId.trim()) return
@@ -33,6 +34,39 @@ export function ImportCollectionModal({ onCollectionImported }: ImportCollection
       alert('Erro ao importar coleção. Verifique se o ID está correto.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleConfirmImport = async () => {
+    if (!collection) return
+
+    setImporting(true)
+    try {
+      const response = await fetch('/api/collections/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ accessId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao importar coleção')
+      }
+
+      const importedCollection = await response.json()
+      
+      setOpen(false)
+      setCollection(null)
+      setAccessId('')
+      onCollectionImported()
+      
+      alert(`Coleção "${importedCollection.name}" importada com sucesso!`)
+    } catch (error) {
+      console.error('Erro:', error)
+      alert('Erro ao importar coleção. Tente novamente.')
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -87,7 +121,7 @@ export function ImportCollectionModal({ onCollectionImported }: ImportCollection
             disabled={loading || !accessId.trim()}
             className="w-full"
           >
-            {loading ? 'Importando...' : 'Importar Coleção'}
+            {loading ? 'Buscando...' : 'Buscar Coleção'}
           </Button>
 
           {collection && (
@@ -102,16 +136,17 @@ export function ImportCollectionModal({ onCollectionImported }: ImportCollection
               <p className="text-sm text-gray-500">
                 {collection.items?.length || 0} transcrições
               </p>
-              <div className="mt-3">
+              <div className="mt-3 space-y-2">
                 <Button
-                  onClick={() => {
-                    setOpen(false)
-                    onCollectionImported()
-                  }}
-                  size="sm"
+                  onClick={handleConfirmImport}
+                  disabled={importing}
+                  className="w-full"
                 >
-                  Visualizar Coleção
+                  {importing ? 'Importando...' : 'Confirmar Importação'}
                 </Button>
+                <p className="text-xs text-gray-500 text-center">
+                  Esta ação criará uma cópia da coleção em sua conta
+                </p>
               </div>
             </div>
           )}

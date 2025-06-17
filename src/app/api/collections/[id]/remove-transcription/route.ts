@@ -3,8 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth'
 import { collectionService } from '@/services/collectionService'
 
-export async function DELETE(request: Request, context: any) {
-  const { params } = await context;
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   try {
     const session = await getServerSession(authOptions)
     
@@ -26,7 +29,7 @@ export async function DELETE(request: Request, context: any) {
     }
 
     // Verificar se a coleção pertence ao usuário
-    const collection = await collectionService.getById(params.id)
+    const collection = await collectionService.getById(id)
     if (!collection || collection.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Coleção não encontrada ou não autorizada' },
@@ -34,7 +37,7 @@ export async function DELETE(request: Request, context: any) {
       )
     }
 
-    await collectionService.removeTranscription(params.id, transcriptionId)
+    await collectionService.removeTranscription(id, transcriptionId)
     
     return NextResponse.json({ message: 'Transcrição removida da coleção' })
   } catch (error) {
