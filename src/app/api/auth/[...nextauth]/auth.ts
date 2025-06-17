@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
                 }
 
                 const user = await prisma.user.findUnique({
-                    where: { email: credentials.email }
+                    where: { email: credentials.email.toLowerCase() }
                 });
 
                 if (!user) {
@@ -66,6 +66,43 @@ export const authOptions: NextAuthOptions = {
         }
     },
     session: {
-        strategy: 'jwt'
+        strategy: 'jwt',
+        maxAge: 24 * 60 * 60, // 24 horas
+    },
+    jwt: {
+        maxAge: 24 * 60 * 60, // 24 horas
+    },
+    // Configurações de segurança adicionais
+    secret: process.env.NEXTAUTH_SECRET,
+    debug: process.env.NODE_ENV === 'development',
+    // Configurações de cookies
+    cookies: {
+        sessionToken: {
+            name: `next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: 24 * 60 * 60 // 24 horas
+            }
+        },
+        callbackUrl: {
+            name: `next-auth.callback-url`,
+            options: {
+                sameSite: 'lax',
+                path: '/',
+                secure: process.env.NODE_ENV === 'production'
+            }
+        },
+        csrfToken: {
+            name: `next-auth.csrf-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: process.env.NODE_ENV === 'production'
+            }
+        }
     }
 }; 

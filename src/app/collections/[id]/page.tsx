@@ -175,11 +175,13 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
               className="rounded-lg border border-gray-700 bg-gray-800 p-6 shadow-sm"
             >
               <div className="mb-4">
-                <img
-                  src={item.transcription.imageUrl}
-                  alt="Imagem transcrita"
-                  className="h-48 w-full rounded object-cover"
-                />
+                {item.transcription.imageUrl && (
+                  <img
+                    src={item.transcription.imageUrl}
+                    alt="Imagem transcrita"
+                    className="h-48 w-full rounded object-cover"
+                  />
+                )}
               </div>
               <div className="mb-4">
                 <p className="text-sm text-gray-400">

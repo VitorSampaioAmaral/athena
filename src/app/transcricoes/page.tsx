@@ -144,11 +144,13 @@ export default function TranscricoesPage() {
               className="rounded-lg border border-gray-700 bg-gray-800 p-6 shadow-sm"
             >
               <div className="mb-4">
-                <img
-                  src={transcription.imageUrl}
-                  alt="Imagem transcrita"
-                  className="h-48 w-full rounded object-cover"
-                />
+                {transcription.imageUrl && (
+                  <img
+                    src={transcription.imageUrl}
+                    alt="Imagem transcrita"
+                    className="h-48 w-full rounded object-cover"
+                  />
+                )}
               </div>
               <div className="mb-4">
                 <p className="text-sm text-gray-400">
