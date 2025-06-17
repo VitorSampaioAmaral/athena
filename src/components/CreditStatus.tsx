@@ -64,10 +64,10 @@ export default function CreditStatus() {
 
   if (loading) {
     return (
-      <div className="mb-4 rounded-lg bg-gray-100 p-4">
+      <div className="mb-4 rounded-lg bg-gray-800 p-4">
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-300 rounded w-1/3 mb-2"></div>
-          <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+          <div className="h-4 bg-gray-600 rounded w-1/3 mb-2"></div>
+          <div className="h-4 bg-gray-600 rounded w-1/2"></div>
         </div>
       </div>
     );
@@ -82,15 +82,15 @@ export default function CreditStatus() {
   const isAtLimit = status.remaining === 0;
 
   return (
-    <div className="mb-6 rounded-lg border bg-white p-4 shadow-sm">
+    <div className="mb-6 rounded-lg border border-gray-600 bg-gray-800 p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-semibold text-white">
           Créditos de Transcrição
         </h3>
         <span className={`text-sm font-medium ${
-          isAtLimit ? 'text-red-600' : 
-          isNearLimit ? 'text-yellow-600' : 
-          'text-green-600'
+          isAtLimit ? 'text-red-400' : 
+          isNearLimit ? 'text-yellow-400' : 
+          'text-green-400'
         }`}>
           {status.remaining} restantes
         </span>
@@ -98,11 +98,11 @@ export default function CreditStatus() {
 
       {/* Barra de progresso */}
       <div className="mb-3">
-        <div className="flex justify-between text-sm text-gray-600 mb-1">
+        <div className="flex justify-between text-sm text-white mb-1">
           <span>Usado hoje: {status.usedToday}</span>
           <span>Limite: {status.dailyLimit}</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-600 rounded-full h-2">
           <div 
             className={`h-2 rounded-full transition-all duration-300 ${
               isAtLimit ? 'bg-red-500' : 
@@ -116,7 +116,7 @@ export default function CreditStatus() {
 
       {/* Status de disponibilidade */}
       {!status.canTranscribe && status.nextAvailable && (
-        <div className="rounded-md bg-yellow-50 border border-yellow-200 p-3">
+        <div className="rounded-md bg-yellow-900 border border-yellow-600 p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
@@ -124,10 +124,10 @@ export default function CreditStatus() {
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">
+              <h3 className="text-sm font-medium text-white">
                 Aguarde antes da próxima transcrição
               </h3>
-              <div className="mt-1 text-sm text-yellow-700">
+              <div className="mt-1 text-sm text-yellow-200">
                 {timeLeft && (
                   <span className="font-mono font-bold">
                     Próxima transcrição disponível em: {timeLeft}
@@ -140,7 +140,7 @@ export default function CreditStatus() {
       )}
 
       {isAtLimit && (
-        <div className="rounded-md bg-red-50 border border-red-200 p-3">
+        <div className="rounded-md bg-red-900 border border-red-600 p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -148,10 +148,10 @@ export default function CreditStatus() {
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">
+              <h3 className="text-sm font-medium text-white">
                 Limite diário atingido
               </h3>
-              <div className="mt-1 text-sm text-red-700">
+              <div className="mt-1 text-sm text-red-200">
                 Você atingiu o limite de {status.dailyLimit} transcrições por dia. 
                 O limite será resetado amanhã.
               </div>
@@ -161,7 +161,7 @@ export default function CreditStatus() {
       )}
 
       {status.canTranscribe && !isAtLimit && (
-        <div className="rounded-md bg-green-50 border border-green-200 p-3">
+        <div className="rounded-md bg-green-900 border border-green-600 p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
@@ -169,10 +169,10 @@ export default function CreditStatus() {
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-green-800">
+              <h3 className="text-sm font-medium text-white">
                 Pronto para transcrição
               </h3>
-              <div className="mt-1 text-sm text-green-700">
+              <div className="mt-1 text-sm text-green-200">
                 Você pode fazer transcrições agora. 
                 {isNearLimit && ` Restam apenas ${status.remaining} transcrições hoje.`}
               </div>

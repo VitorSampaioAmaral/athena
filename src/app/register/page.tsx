@@ -46,16 +46,16 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-6 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-gray-900">
+      <div className="w-full max-w-md space-y-8 rounded-lg bg-gray-800 p-6 shadow-lg border border-gray-700">
         <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900">
+          <h2 className="text-center text-3xl font-bold text-white">
             Criar conta
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="rounded-md bg-red-50 p-4 text-sm text-red-700">
+            <div className="rounded-md bg-red-900/50 p-4 text-sm text-red-300">
               {error}
             </div>
           )}
@@ -69,7 +69,7 @@ export default function RegisterPage() {
                 name="name"
                 type="text"
                 required
-                className="relative block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                className="relative block w-full rounded-md border-0 py-1.5 text-white bg-gray-700 ring-1 ring-inset ring-gray-600 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 placeholder="Nome"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -84,7 +84,7 @@ export default function RegisterPage() {
                 name="email"
                 type="email"
                 required
-                className="relative block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                className="relative block w-full rounded-md border-0 py-1.5 text-white bg-gray-700 ring-1 ring-inset ring-gray-600 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -99,7 +99,7 @@ export default function RegisterPage() {
                 name="password"
                 type="password"
                 required
-                className="relative block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                className="relative block w-full rounded-md border-0 py-1.5 text-white bg-gray-700 ring-1 ring-inset ring-gray-600 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 placeholder="Senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -114,7 +114,7 @@ export default function RegisterPage() {
                 name="confirmPassword"
                 type="password"
                 required
-                className="relative block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                className="relative block w-full rounded-md border-0 py-1.5 text-white bg-gray-700 ring-1 ring-inset ring-gray-600 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                 placeholder="Confirmar Senha"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -134,7 +134,7 @@ export default function RegisterPage() {
           <div className="text-center text-sm">
             <Link
               href="/login"
-              className="font-medium text-blue-600 hover:text-blue-500"
+              className="font-medium text-blue-400 hover:text-blue-300"
             >
               Já tem uma conta? Faça login
             </Link>

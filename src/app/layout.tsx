@@ -19,9 +19,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className="dark">
-      <body className={`${inter.className} bg-background text-foreground`}>
+      <body className={`${inter.className} bg-gray-900 text-white`}>
         <AuthProvider>
-          <div className="min-h-screen bg-background">
+          <div className="min-h-screen bg-gray-900">
             <Navigation />
             <main className="container mx-auto px-4 py-8">{children}</main>
           </div>
@@ -29,9 +29,9 @@ export default function RootLayout({
             position="top-right"
             toastOptions={{
               style: {
-                background: 'hsl(var(--card))',
-                color: 'hsl(var(--foreground))',
-                border: '1px solid hsl(var(--border))',
+                background: '#1f2937',
+                color: '#ffffff',
+                border: '1px solid #374151',
               },
             }}
           />

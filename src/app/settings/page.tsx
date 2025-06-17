@@ -67,9 +67,9 @@ export default function SettingsPage() {
 
   if (!session) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <h1 className="mb-8 text-4xl font-bold">Acesso Restrito</h1>
-        <p className="mb-8 text-center text-lg text-gray-600">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-900">
+        <h1 className="mb-8 text-4xl font-bold text-white">Acesso Restrito</h1>
+        <p className="mb-8 text-center text-lg text-gray-300">
           Você precisa estar logado para acessar esta página
         </p>
         <button
@@ -84,36 +84,36 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-8 text-center text-4xl font-bold">Configurações</h1>
+      <h1 className="mb-8 text-center text-4xl font-bold text-white">Configurações</h1>
 
-      <div className="mx-auto max-w-2xl space-y-6 rounded-lg bg-white p-6 shadow-lg">
+      <div className="mx-auto max-w-2xl space-y-6 rounded-lg bg-gray-800 p-6 shadow-lg border border-gray-700">
         <div>
-          <h2 className="mb-4 text-xl font-semibold">Perfil</h2>
+          <h2 className="mb-4 text-xl font-semibold text-white">Perfil</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-300">
                 Email
               </label>
-              <p className="mt-1 text-gray-900">{session.user.email}</p>
+              <p className="mt-1 text-white">{session.user.email}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-300">
                 Nome
               </label>
-              <p className="mt-1 text-gray-900">{session.user.name || 'Não definido'}</p>
+              <p className="mt-1 text-white">{session.user.name || 'Não definido'}</p>
             </div>
           </div>
         </div>
 
         <div>
-          <h2 className="mb-4 text-xl font-semibold">Preferências</h2>
+          <h2 className="mb-4 text-xl font-semibold text-white">Preferências</h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-300">
                   Notificações por email
                 </label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-400">
                   Receba notificações sobre suas transcrições
                 </p>
               </div>
@@ -132,7 +132,7 @@ export default function SettingsPage() {
         </div>
 
         <div>
-          <h2 className="mb-4 text-xl font-semibold">Conta</h2>
+          <h2 className="mb-4 text-xl font-semibold text-white">Conta</h2>
           <div className="space-y-4">
             <button
               className="w-full rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-500 disabled:opacity-50"

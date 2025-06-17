@@ -1,53 +1,53 @@
 .analysisContainer {
-  @apply mt-4 rounded-lg bg-card/30 p-4 backdrop-blur-sm;
+  @apply mt-4 rounded-lg bg-gray-800 p-4;
 }
 
 .errorContainer {
-  @apply mt-4 rounded-lg bg-destructive/5 p-4 text-destructive;
+  @apply mt-4 rounded-lg bg-red-900/50 p-4 text-red-300;
 }
 
 .loadingContainer {
-  @apply mt-4 rounded-lg bg-card/30 p-4 backdrop-blur-sm;
+  @apply mt-4 rounded-lg bg-gray-800 p-4;
 }
 
 .progressBar {
-  @apply h-2 w-full rounded-full bg-muted/50;
+  @apply h-2 w-full rounded-full bg-gray-600;
 }
 
 .progressFill {
-  @apply h-full rounded-full bg-primary/80 transition-all duration-300;
+  @apply h-full rounded-full bg-blue-500 transition-all duration-300;
 }
 
 .progressText {
-  @apply mt-2 text-center text-primary/90;
+  @apply mt-2 text-center text-blue-400;
 }
 
 .resultContainer {
-  @apply mt-4 rounded-lg bg-card/30 p-4 backdrop-blur-sm;
+  @apply mt-4 rounded-lg bg-gray-800 p-4;
 }
 
 .resultText {
-  @apply whitespace-pre-wrap text-foreground/90;
+  @apply whitespace-pre-wrap text-white;
 }
 
 .resultMeta {
-  @apply mt-4 text-sm text-muted-foreground/80;
+  @apply mt-4 text-sm text-gray-300;
 }
 
 .warningText {
-  @apply text-yellow-400/80;
+  @apply text-yellow-400;
 }
 
 .debugInfo {
-  @apply mt-4 rounded-lg bg-card/30 p-4 backdrop-blur-sm text-sm text-muted-foreground/80;
+  @apply mt-4 rounded-lg bg-gray-800 p-4 text-sm text-gray-300;
 }
 
 .errors-section {
-  @apply mt-4 rounded-lg bg-destructive/5 p-4 text-destructive;
+  @apply mt-4 rounded-lg bg-red-900/50 p-4 text-red-300;
 }
 
 .errors-title {
-  @apply font-bold;
+  @apply font-bold text-white;
 }
 
 .errors-list {
@@ -55,5 +55,5 @@
 }
 
 .errors-item {
-  @apply text-destructive/90;
+  @apply text-red-300;
 } 

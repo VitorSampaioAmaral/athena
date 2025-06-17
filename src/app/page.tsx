@@ -21,9 +21,9 @@ export default function HomePage() {
 
   if (!session) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-        <h1 className="mb-8 text-4xl font-bold text-foreground">Bem-vindo ao Athena</h1>
-        <p className="mb-8 text-center text-lg text-muted-foreground">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-900">
+        <h1 className="mb-8 text-4xl font-bold text-white">Bem-vindo ao Athena</h1>
+        <p className="mb-8 text-center text-lg text-gray-300">
           Faça login para começar a transcrever suas imagens
         </p>
         <button
@@ -37,9 +37,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-      <h1 className="mb-8 text-4xl font-bold text-foreground">Bem-vindo ao Athena</h1>
-      <p className="mb-8 text-center text-lg text-muted-foreground">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-900">
+      <h1 className="mb-8 text-4xl font-bold text-white">Bem-vindo ao Athena</h1>
+      <p className="mb-8 text-center text-lg text-gray-300">
         Comece a transcrever suas imagens agora mesmo
       </p>
       <button

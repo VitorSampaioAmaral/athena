@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth';
 import { transcriptionService } from '@/services/transcriptionService';
 import { prisma } from '@/lib/prisma';
+import { performance } from 'perf_hooks';
 
 const TIMEOUT_MS = 30000; // 30 segundos
 const MIN_DELAY_MS = 30000; // 30 segundos entre transcrições
@@ -12,7 +13,37 @@ const MAX_DELAY_MS = 120000; // 2 minutos entre transcrições
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
-async function transcribeWithOpenRouter(imageUrl: string): Promise<string> {
+async function downloadImage(url: string): Promise<string> {
+  console.log('Baixando imagem da URL:', url);
+  
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erro ao baixar imagem: ${response.status} ${response.statusText}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const base64 = buffer.toString('base64');
+  
+  // Detecta o tipo MIME da imagem
+  const contentType = response.headers.get('content-type') || 'image/jpeg';
+  const mimeType = contentType.split(';')[0];
+  
+  console.log('Imagem baixada com sucesso:', {
+    size: buffer.length,
+    mimeType,
+    base64Length: base64.length
+  });
+
+  return `data:${mimeType};base64,${base64}`;
+}
+
+async function transcribeWithOpenRouter(imageBase64: string): Promise<string> {
   if (!OPENROUTER_API_KEY) {
     throw new Error('Chave da API OpenRouter não configurada');
   }
@@ -20,7 +51,7 @@ async function transcribeWithOpenRouter(imageUrl: string): Promise<string> {
   console.log('Iniciando transcrição via OpenRouter...');
 
   const requestBody = {
-    model: "opengvlab/internvl3-14b:free", // Modelo gratuito com :free
+    model: "opengvlab/internvl3-14b:free",
     messages: [
       {
         role: "user",
@@ -32,12 +63,14 @@ async function transcribeWithOpenRouter(imageUrl: string): Promise<string> {
           {
             type: "image_url",
             image_url: {
-              url: imageUrl
+              url: imageBase64
             }
           }
         ]
       }
-    ]
+    ],
+    max_tokens: 2048,
+    temperature: 0.7
   };
 
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -117,8 +150,11 @@ async function processImageWithTimeout(imageUrl: string): Promise<string> {
     setTimeout(() => reject(new Error('Timeout ao processar a imagem')), TIMEOUT_MS);
   });
 
+  console.log('Baixando imagem da URL...');
+  const imageBase64 = await downloadImage(imageUrl);
+  
   console.log('Iniciando transcrição via OpenRouter...');
-  const transcriptionPromise = transcribeWithOpenRouter(imageUrl);
+  const transcriptionPromise = transcribeWithOpenRouter(imageBase64);
   const result = await Promise.race([transcriptionPromise, timeoutPromise]);
   
   console.log('Transcrição concluída:', result);
@@ -126,6 +162,8 @@ async function processImageWithTimeout(imageUrl: string): Promise<string> {
 }
 
 export async function POST(request: Request) {
+  const startTime = performance.now();
+  
   try {
     console.log('Recebendo requisição de transcrição por URL...');
     const session = await getServerSession(authOptions);
@@ -138,9 +176,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { imageUrl } = await request.json();
+    const { url } = await request.json();
 
-    if (!imageUrl) {
+    if (!url) {
       console.log('URL da imagem não fornecida');
       return NextResponse.json(
         { error: 'URL da imagem é obrigatória' },
@@ -150,7 +188,7 @@ export async function POST(request: Request) {
 
     // Validar URL
     try {
-      new URL(imageUrl);
+      new URL(url);
     } catch {
       return NextResponse.json(
         { error: 'URL inválida' },
@@ -178,23 +216,27 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log('Processando imagem da URL:', imageUrl);
-    const text = await processImageWithTimeout(imageUrl);
+    console.log('Processando imagem da URL:', url);
+    const text = await processImageWithTimeout(url);
     console.log('Texto processado:', text);
 
     console.log('Salvando transcrição no banco de dados...');
     const transcription = await transcriptionService.create({
       userId: session.user.id,
-      imageUrl: imageUrl, // Salvar a URL da imagem
+      imageUrl: url, // Salvar a URL da imagem
       text,
       confidence: 1.0,
       status: 'completed'
     });
     console.log('Transcrição salva:', transcription);
 
+    const endTime = performance.now();
+    const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+
     const response = {
-      transcription: text,
-      id: transcription.id
+      analysis: text,
+      processingTime: `${processingTime} segundos`,
+      status: 'success'
     };
     console.log('Enviando resposta:', response);
     return NextResponse.json(response);

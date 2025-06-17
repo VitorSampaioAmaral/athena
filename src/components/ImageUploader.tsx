@@ -154,13 +154,13 @@ export default function ImageUploader() {
   return (
     <div className={styles.uploaderContainer}>
       {/* Abas */}
-      <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+      <div className="flex space-x-1 mb-6 bg-gray-800 p-1 rounded-lg">
         <button
           onClick={() => setActiveTab('upload')}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
             activeTab === 'upload'
-              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              ? 'bg-gray-700 text-white shadow-sm'
+              : 'text-gray-300 hover:text-white'
           }`}
         >
           Upload de Arquivo
@@ -169,8 +169,8 @@ export default function ImageUploader() {
           onClick={() => setActiveTab('url')}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
             activeTab === 'url'
-              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              ? 'bg-gray-700 text-white shadow-sm'
+              : 'text-gray-300 hover:text-white'
           }`}
         >
           URL da Imagem
@@ -246,7 +246,7 @@ export default function ImageUploader() {
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://exemplo.com/imagem.jpg"
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 px-4 py-2 border border-gray-600 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isLoading || isValidating}
             />
             <button
@@ -257,8 +257,8 @@ export default function ImageUploader() {
               {isLoading ? 'Carregando...' : 'Carregar'}
             </button>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Insira a URL de uma imagem (PNG, JPG, GIF ou WEBP)
+          <p className="text-sm text-white">
+            Insira a URL de uma imagem
           </p>
         </div>
       )}
@@ -292,9 +292,9 @@ export default function ImageUploader() {
       {imageData && <ImageAnalysis imageData={imageData} />}
       
       {imageData && (
-        <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2">Resultado da Análise:</h3>
-          <div className="text-sm text-gray-700 dark:text-gray-300">
+        <div className="mt-4 p-4 bg-gray-800 rounded-lg">
+          <h3 className="text-lg font-semibold mb-2 text-white">Resultado da Análise:</h3>
+          <div className="text-sm text-white">
             <p>A imagem foi carregada com sucesso e está sendo analisada.</p>
             <p className="mt-2">Aguarde enquanto processamos os detalhes da imagem...</p>
           </div>

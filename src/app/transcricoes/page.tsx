@@ -101,7 +101,7 @@ export default function TranscricoesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gray-900">
         <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-t-2 border-blue-500"></div>
       </div>
     );
@@ -110,7 +110,7 @@ export default function TranscricoesPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Histórico de Transcrições</h1>
+        <h1 className="text-3xl font-bold text-white">Histórico de Transcrições</h1>
         <div className="space-x-4">
           <button
             onClick={handleBackup}
@@ -128,15 +128,15 @@ export default function TranscricoesPage() {
       </div>
 
       {transcriptions.length === 0 ? (
-        <div className="rounded-lg bg-gray-100 p-8 text-center">
-          <p className="text-gray-600">Nenhuma transcrição encontrada</p>
+        <div className="rounded-lg bg-gray-800 p-8 text-center border border-gray-700">
+          <p className="text-gray-300">Nenhuma transcrição encontrada</p>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {transcriptions.map((transcription) => (
             <div
               key={transcription.id}
-              className="rounded-lg border bg-white p-6 shadow-sm"
+              className="rounded-lg border border-gray-700 bg-gray-800 p-6 shadow-sm"
             >
               <div className="mb-4">
                 <img
@@ -146,19 +146,19 @@ export default function TranscricoesPage() {
                 />
               </div>
               <div className="mb-4">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-400">
                   {new Date(transcription.createdAt).toLocaleString()}
                 </p>
-                <p className="mt-2 whitespace-pre-wrap">{transcription.text}</p>
+                <p className="mt-2 whitespace-pre-wrap text-white">{transcription.text}</p>
               </div>
               <div className="flex items-center justify-between">
                 <span
                   className={`rounded-full px-2 py-1 text-xs ${
                     transcription.status === 'completed'
-                      ? 'bg-green-100 text-green-800'
+                      ? 'bg-green-900 text-green-300'
                       : transcription.status === 'error'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-red-900 text-red-300'
+                      : 'bg-yellow-900 text-yellow-300'
                   }`}
                 >
                   {transcription.status === 'completed'
@@ -169,13 +169,13 @@ export default function TranscricoesPage() {
                 </span>
                 <button
                   onClick={() => handleDelete(transcription.id)}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-400 hover:text-red-300"
                 >
                   Excluir
                 </button>
               </div>
               {transcription.error && (
-                <p className="mt-2 text-sm text-red-500">{transcription.error}</p>
+                <p className="mt-2 text-sm text-red-400">{transcription.error}</p>
               )}
             </div>
           ))}
