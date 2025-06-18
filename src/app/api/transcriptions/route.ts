@@ -18,6 +18,9 @@ export async function POST(request: Request) {
     const transcription = await transcriptionService.create({
       userId: session.user.id,
       imageUrl: data.imageUrl,
+      text: data.text || '',
+      confidence: typeof data.confidence === 'number' ? data.confidence : 1.0,
+      status: 'completed',
     })
     
     return NextResponse.json(transcription)

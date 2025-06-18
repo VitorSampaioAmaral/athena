@@ -104,6 +104,22 @@ export default function TranscricoesPage() {
     toast.success('Transcrição adicionada à coleção com sucesso!');
   };
 
+  // Função para normalizar texto: remove espaços, quebras de linha e deixa minúsculo
+  function normalizeText(text: string) {
+    return text.replace(/\s+/g, '').toLowerCase();
+  }
+
+  // Remove duplicatas: mantém só a mais recente para cada imageUrl+texto normalizado+createdAt
+  const uniqueTranscriptions = Object.values(
+    transcriptions.reduce((acc, t) => {
+      const key = `${t.imageUrl}|${normalizeText(t.text)}|${t.createdAt}`;
+      if (!acc[key] || new Date(t.createdAt) > new Date(acc[key].createdAt)) {
+        acc[key] = t;
+      }
+      return acc;
+    }, {} as Record<string, Transcription>)
+  );
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900">
@@ -132,13 +148,13 @@ export default function TranscricoesPage() {
         </div>
       </div>
 
-      {transcriptions.length === 0 ? (
+      {uniqueTranscriptions.length === 0 ? (
         <div className="rounded-lg bg-gray-800 p-8 text-center border border-gray-700">
           <p className="text-gray-300">Nenhuma transcrição encontrada</p>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {transcriptions.map((transcription) => (
+          {uniqueTranscriptions.map((transcription) => (
             <div
               key={transcription.id}
               className="rounded-lg border border-gray-700 bg-gray-800 p-6 shadow-sm"

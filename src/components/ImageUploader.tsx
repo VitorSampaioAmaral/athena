@@ -7,6 +7,13 @@ import styles from './ImageUploader.module.css';
 
 type TabType = 'upload' | 'url';
 
+interface AnalysisResponse {
+  analysis: string;
+  processingTime: string;
+  status: 'success' | 'partial' | 'error';
+  error?: string;
+}
+
 export default function ImageUploader() {
   const [activeTab, setActiveTab] = useState<TabType>('upload');
   const [imageData, setImageData] = useState<string | null>(null);
@@ -15,6 +22,8 @@ export default function ImageUploader() {
   const [isLoading, setIsLoading] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
 
   const validateFile = (file: File): boolean => {
     // Verifica o tamanho do arquivo (máximo 10MB)
@@ -68,6 +77,8 @@ export default function ImageUploader() {
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (isAnalyzing) return;
+    setIsAnalyzing(true);
     try {
       setIsValidating(true);
       setError(null);
@@ -103,10 +114,14 @@ export default function ImageUploader() {
     } finally {
       setIsLoading(false);
       setIsValidating(false);
+      setIsAnalyzing(false);
+      setAnalysisResult(null);
     }
-  }, []);
+  }, [isAnalyzing]);
 
   const handleUrlSubmit = async () => {
+    if (isAnalyzing) return;
+    setIsAnalyzing(true);
     try {
       setIsValidating(true);
       setError(null);
@@ -130,6 +145,8 @@ export default function ImageUploader() {
     } finally {
       setIsLoading(false);
       setIsValidating(false);
+      setIsAnalyzing(false);
+      setAnalysisResult(null);
     }
   };
 
@@ -141,7 +158,7 @@ export default function ImageUploader() {
     maxFiles: 1,
     maxSize: 10 * 1024 * 1024, // 10MB
     multiple: false,
-    disabled: isLoading || isValidating
+    disabled: isLoading || isValidating || isAnalyzing
   });
 
   const handleClear = () => {
@@ -149,6 +166,15 @@ export default function ImageUploader() {
     setImageUrl('');
     setError(null);
     setValidationMessage(null);
+    setIsAnalyzing(false);
+    setAnalysisResult(null);
+  };
+
+  // Função chamada pelo ImageAnalysis ao finalizar
+  const handleAnalysisDone = (result?: AnalysisResponse) => {
+    setIsAnalyzing(false);
+    if (result) setAnalysisResult(result);
+    setImageData(null); // Limpa para não reprocessar
   };
 
   return (
@@ -157,6 +183,7 @@ export default function ImageUploader() {
       <div className="flex space-x-1 mb-6 bg-gray-800 p-1 rounded-lg">
         <button
           onClick={() => setActiveTab('upload')}
+          disabled={isAnalyzing}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
             activeTab === 'upload'
               ? 'bg-gray-700 text-white shadow-sm'
@@ -167,6 +194,7 @@ export default function ImageUploader() {
         </button>
         <button
           onClick={() => setActiveTab('url')}
+          disabled={isAnalyzing}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
             activeTab === 'url'
               ? 'bg-gray-700 text-white shadow-sm'
@@ -189,7 +217,7 @@ export default function ImageUploader() {
             : styles.dropzoneInactive
         }`}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} disabled={isLoading || isValidating || isAnalyzing} />
         <div className="space-y-4">
           <svg
             className={`${styles.uploadIcon} ${
@@ -247,11 +275,11 @@ export default function ImageUploader() {
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://exemplo.com/imagem.jpg"
               className="flex-1 px-4 py-2 border border-gray-600 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading || isValidating}
+              disabled={isLoading || isValidating || isAnalyzing}
             />
             <button
               onClick={handleUrlSubmit}
-              disabled={!imageUrl.trim() || isLoading || isValidating}
+              disabled={!imageUrl.trim() || isLoading || isValidating || isAnalyzing}
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? 'Carregando...' : 'Carregar'}
@@ -282,22 +310,60 @@ export default function ImageUploader() {
       <div className={styles.buttonContainer}>
         <button
           onClick={handleClear}
-          disabled={!imageData || isLoading || isValidating}
+          disabled={!imageData || isLoading || isValidating || isAnalyzing}
           className={`${styles.actionButton} ${styles.secondaryButton}`}
         >
           Limpar
         </button>
       </div>
 
-      {imageData && <ImageAnalysis imageData={imageData} />}
+      {imageData && <ImageAnalysis imageData={imageData} onDone={handleAnalysisDone} />}
       
-      {imageData && (
+      {analysisResult && (
         <div className="mt-4 p-4 bg-gray-800 rounded-lg">
           <h3 className="text-lg font-semibold mb-2 text-white">Resultado da Análise:</h3>
-          <div className="text-sm text-white">
-            <p>A imagem foi carregada com sucesso e está sendo analisada.</p>
-            <p className="mt-2">Aguarde enquanto processamos os detalhes da imagem...</p>
+          <div className="text-sm text-white whitespace-pre-line">
+            {/* Separar as seções usando regex */}
+            {(() => {
+              let text = typeof analysisResult === 'string' ? analysisResult : analysisResult.analysis;
+              // Remove # e - do início das linhas
+              text = text.replace(/^[#\-]+\s?/gm, '');
+              const textMatch = text.match(/=+\s*TEXTO EXTRA[IÍ]DO\s*=+\n([\s\S]*?)(?=\n=+\s*DESCRI[CÇ][AÃ]O VISUAL\s*=+|$)/i);
+              const visualMatch = text.match(/=+\s*DESCRI[CÇ][AÃ]O VISUAL\s*=+\n([\s\S]*?)(?=\n=+\s*CONTEXTO\s*=+|$)/i);
+              const contextMatch = text.match(/=+\s*CONTEXTO\s*=+\n([\s\S]*?)$/i);
+              return (
+                <>
+                  {textMatch && (
+                    <div className="mb-4">
+                      <div className="font-bold text-blue-400 mb-1">📝 Texto Extraído</div>
+                      <div className="bg-blue-900/20 rounded p-2 ml-4">{textMatch[1].trim()}</div>
+                    </div>
+                  )}
+                  {visualMatch && (
+                    <div className="mb-4">
+                      <div className="font-bold text-green-400 mb-1">👁️ Descrição Visual</div>
+                      <div className="bg-green-900/20 rounded p-2 ml-4">{visualMatch[1].trim()}</div>
+                    </div>
+                  )}
+                  {contextMatch && (
+                    <div className="mb-4">
+                      <div className="font-bold text-purple-400 mb-1">🎯 Contexto</div>
+                      <div className="bg-purple-900/20 rounded p-2 ml-4">{contextMatch[1].trim()}</div>
+                    </div>
+                  )}
+                  {!textMatch && !visualMatch && !contextMatch && (
+                    <div>{text}</div>
+                  )}
+                </>
+              );
+            })()}
           </div>
+          {analysisResult.processingTime && (
+            <div className="text-xs text-gray-400 mt-2">Tempo de processamento: {analysisResult.processingTime}</div>
+          )}
+          {analysisResult.error && (
+            <div className="text-xs text-red-400 mt-2">Erro: {analysisResult.error}</div>
+          )}
         </div>
       )}
     </div>

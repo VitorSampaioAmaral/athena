@@ -489,272 +489,129 @@ async function analyzeSymbolicElements(imageBuffer: Buffer): Promise<string> {
 
 // Função para analisar o significado da imagem usando InternVL3 14B
 async function analyzeImageMeaning(imageBuffer: Buffer): Promise<string> {
-  let retryCount = 0;
-  const maxRetries = 3;
   const startTime = performance.now();
-  let lastValidResponse: string | null = null;
-  
-  // Função para calcular o delay com backoff exponencial
-  const getDelay = (attempt: number) => {
-    // Base delay de 3 segundos, multiplicado por 2^attempt
-    // Isso resulta em: 3s, 6s, 12s, 24s, etc.
-    const baseDelay = 3000;
-    const exponentialDelay = baseDelay * Math.pow(2, attempt);
-    // Adiciona um jitter aleatório entre 0 e 1 segundo para evitar thundering herd
-    const jitter = Math.random() * 1000;
-    return exponentialDelay + jitter;
-  };
-
-  while (retryCount < maxRetries) {
-    try {
-      // Se não for a primeira tentativa, aguarda o delay
-      if (retryCount > 0) {
-        const delay = getDelay(retryCount - 1);
-        console.log(`Aguardando ${(delay/1000).toFixed(1)} segundos antes da próxima tentativa...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-
-      const base64Image = imageBuffer.toString('base64');
-      
-      console.log(`Tentativa ${retryCount + 1} de ${maxRetries} para análise de imagem...`);
-      
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "https://github.com/VitorSampaioAmaral/athena",
-          "X-Title": "Athena Image Analysis",
-          "Content-Type": "application/json"
+  const base64Image = imageBuffer.toString('base64');
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "HTTP-Referer": "https://github.com/VitorSampaioAmaral/athena",
+      "X-Title": "Athena Image Analysis",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      "model": "opengvlab/internvl3-14b:free",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Você é um especialista em análise de imagens e acessibilidade. Como assistente de descrição de imagens, sua tarefa é fornecer uma análise detalhada e acessível em português. Foque em ajudar pessoas com deficiência visual a compreender completamente o conteúdo."
         },
-        body: JSON.stringify({
-          "model": "opengvlab/internvl3-14b:free",
-          "messages": [
+        {
+          "role": "user",
+          "content": [
             {
-              "role": "system",
-              "content": "Você é um especialista em análise de imagens e acessibilidade. Como assistente de descrição de imagens, sua tarefa é fornecer uma análise detalhada e acessível em português. Foque em ajudar pessoas com deficiência visual a compreender completamente o conteúdo."
+              "type": "text",
+              "text": "Analise esta imagem de forma completa e acessível. Forneça:\n\n1. TEXTO EXTRAÍDO: Todo o texto visível na imagem\n2. DESCRIÇÃO VISUAL: Descrição detalhada incluindo:\n   - Cores predominantes e contrastes\n   - Símbolos, ícones e elementos gráficos\n   - Layout e organização dos elementos\n   - Objetos, pessoas ou cenários visíveis\n   - Qualquer informação contextual importante\n\n3. CONTEXTO: O que a imagem representa ou comunica\n\nFormate a resposta assim:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]"
             },
             {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Analise esta imagem de forma completa e acessível. Forneça:\n\n1. TEXTO EXTRAÍDO: Todo o texto visível na imagem\n2. DESCRIÇÃO VISUAL: Descrição detalhada incluindo:\n   - Cores predominantes e contrastes\n   - Símbolos, ícones e elementos gráficos\n   - Layout e organização dos elementos\n   - Objetos, pessoas ou cenários visíveis\n   - Qualquer informação contextual importante\n\n3. CONTEXTO: O que a imagem representa ou comunica\n\nFormate a resposta assim:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]"
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": `data:image/jpeg;base64,${base64Image}`
-                  }
-                }
-              ]
+              "type": "image_url",
+              "image_url": {
+                "url": `data:image/jpeg;base64,${base64Image}`
+              }
             }
-          ],
-          "temperature": 0.7,
-          "max_tokens": 2048,
-          "stream": false
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error(`Erro na tentativa ${retryCount + 1}:`, {
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        });
-
-        // Se for erro de Too Many Requests, força um delay maior
-        if (response.status === 429) {
-          const rateLimitDelay = getDelay(retryCount) * 2; // Dobra o delay para rate limits
-          console.log(`Rate limit atingido. Aguardando ${(rateLimitDelay/1000).toFixed(1)} segundos...`);
-          await new Promise(resolve => setTimeout(resolve, rateLimitDelay));
+          ]
         }
+      ],
+      "temperature": 0.7,
+      "max_tokens": 2048,
+      "stream": false
+    })
+  });
 
-        throw new Error(`Erro na requisição ao OpenRouter: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      const endTime = performance.now();
-      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-      
-      console.log(`Resposta da tentativa ${retryCount + 1} (${processingTime}s):`, JSON.stringify(result, null, 2));
-      
-      // Verifica se a resposta está em um formato diferente do esperado
-      const firstChoice = result.choices?.[0];
-      if (!firstChoice) {
-        console.log(`Tentativa ${retryCount + 1}: choices vazio, tentando novamente...`);
-        retryCount++;
-        continue;
-      }
-
-      // Tenta diferentes formatos de resposta
-      const content = 
-        (typeof firstChoice === 'string' ? firstChoice : null) ||
-        firstChoice.message?.content ||
-        firstChoice.content ||
-        firstChoice.text ||
-        firstChoice.response ||
-        (typeof firstChoice === 'object' ? JSON.stringify(firstChoice) : null);
-
-      // Verifica se a resposta está vazia
-      if (!content || content.trim() === '') {
-        console.log(`Tentativa ${retryCount + 1}: resposta vazia, tentando novamente...`);
-        retryCount++;
-        continue;
-      }
-
-      if (content) {
-        console.log(`Análise concluída com sucesso na tentativa ${retryCount + 1} em ${processingTime} segundos`);
-        lastValidResponse = content;
-        return content;
-      }
-
-      console.log(`Tentativa ${retryCount + 1}: conteúdo não encontrado, tentando novamente...`);
-      retryCount++;
-      
-    } catch (error) {
-      const endTime = performance.now();
-      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-      console.error(`Erro na tentativa ${retryCount + 1} (${processingTime}s):`, error);
-      
-      if (lastValidResponse) {
-        console.log('Retornando última resposta válida encontrada');
-        return lastValidResponse;
-      }
-      
-      retryCount++;
-      
-      if (retryCount === maxRetries) {
-        console.error('Todas as tentativas falharam');
-        if (lastValidResponse) {
-          return lastValidResponse;
-        }
-        throw new Error('Não foi possível obter uma análise válida após várias tentativas');
-      }
-    }
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(`Erro na requisição ao OpenRouter: ${response.statusText}`);
   }
 
-  if (lastValidResponse) {
-    console.log('Retornando última resposta válida encontrada após todas as tentativas');
-    return lastValidResponse;
-  }
-
+  const result = await response.json();
   const endTime = performance.now();
   const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-  throw new Error(`Número máximo de tentativas excedido após ${processingTime} segundos`);
+
+  const firstChoice = result.choices?.[0];
+  if (!firstChoice) {
+    throw new Error('Resposta da API não possui choices válidas');
+  }
+
+  const content =
+    (typeof firstChoice === 'string' ? firstChoice : null) ||
+    firstChoice.message?.content ||
+    firstChoice.content ||
+    firstChoice.text ||
+    firstChoice.response ||
+    (typeof firstChoice === 'object' ? JSON.stringify(firstChoice) : null);
+
+  if (!content || content.trim() === '') {
+    throw new Error('Resposta da API vazia');
+  }
+
+  return content;
 }
 
 // Função para gerar resposta usando o modelo de texto
 async function generateResponse(prompt: string): Promise<string> {
-  let retryCount = 0;
-  const maxRetries = 3;
   const startTime = performance.now();
-  let lastValidResponse: string | null = null;
-  
-  while (retryCount < maxRetries) {
-    try {
-      console.log(`Tentativa ${retryCount + 1} de ${maxRetries} para geração de resposta...`);
-      
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "https://github.com/VitorSampaioAmaral/athena",
-          "X-Title": "Athena Image Analysis",
-          "Content-Type": "application/json"
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "HTTP-Referer": "https://github.com/VitorSampaioAmaral/athena",
+      "X-Title": "Athena Image Analysis",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      "model": "opengvlab/internvl3-14b:free",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Você é um assistente especializado em análise de imagens. Sua resposta DEVE ser em português do Brasil e seguir o formato:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]\n\nUse português do Brasil e mantenha a resposta acessível e detalhada."
         },
-        body: JSON.stringify({
-          "model": "opengvlab/internvl3-14b:free",
-          "messages": [
-            {
-              "role": "system",
-              "content": "Você é um assistente especializado em análise de imagens. Sua resposta DEVE ser em português do Brasil e seguir o formato:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]\n\nUse português do Brasil e mantenha a resposta acessível e detalhada."
-            },
-            {
-              "role": "user",
-              "content": `Com base na análise anterior: "${prompt}", forneça uma interpretação detalhada seguindo o formato:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]\n\nUse português do Brasil e mantenha a resposta acessível e detalhada.`
-            }
-          ],
-          "temperature": 0.7,
-          "max_tokens": 2048
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error(`Erro na tentativa ${retryCount + 1}:`, {
-          status: response.status,
-          statusText: response.statusText,
-          errorData
-        });
-        throw new Error(`Erro na requisição ao OpenRouter: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      const endTime = performance.now();
-      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-      
-      console.log(`Resposta da tentativa ${retryCount + 1} (${processingTime}s):`, JSON.stringify(result, null, 2));
-      
-      // Verifica se a resposta está em um formato diferente do esperado
-      const firstChoice = result.choices?.[0];
-      if (!firstChoice) {
-        console.log(`Tentativa ${retryCount + 1}: choices vazio, tentando novamente...`);
-        retryCount++;
-        continue;
-      }
-
-      // Tenta diferentes formatos de resposta
-      const content = 
-        (typeof firstChoice === 'string' ? firstChoice : null) ||
-        firstChoice.message?.content ||
-        firstChoice.content ||
-        firstChoice.text ||
-        firstChoice.response ||
-        (typeof firstChoice === 'object' ? JSON.stringify(firstChoice) : null);
-
-      if (content) {
-        console.log(`Resposta gerada com sucesso na tentativa ${retryCount + 1} em ${processingTime} segundos`);
-        lastValidResponse = content;
-        return content;
-      }
-
-      console.log(`Tentativa ${retryCount + 1}: conteúdo não encontrado, tentando novamente...`);
-      retryCount++;
-      
-    } catch (error) {
-      const endTime = performance.now();
-      const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-      console.error(`Erro na tentativa ${retryCount + 1} (${processingTime}s):`, error);
-      
-      if (lastValidResponse) {
-        console.log('Retornando última resposta válida encontrada');
-        return lastValidResponse;
-      }
-      
-      retryCount++;
-      
-      if (retryCount === maxRetries) {
-        console.error('Todas as tentativas falharam');
-        if (lastValidResponse) {
-          return lastValidResponse;
+        {
+          "role": "user",
+          "content": `Com base na análise anterior: "${prompt}", forneça uma interpretação detalhada seguindo o formato:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]\n\nUse português do Brasil e mantenha a resposta acessível e detalhada.`
         }
-        throw new Error('Não foi possível gerar uma resposta válida após várias tentativas');
-      }
-      
-      // Espera um pouco antes de tentar novamente
-      await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
-    }
+      ],
+      "temperature": 0.7,
+      "max_tokens": 2048
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(`Erro na requisição ao OpenRouter: ${response.statusText}`);
   }
 
-  if (lastValidResponse) {
-    console.log('Retornando última resposta válida encontrada após todas as tentativas');
-    return lastValidResponse;
-  }
-
+  const result = await response.json();
   const endTime = performance.now();
   const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-  throw new Error(`Número máximo de tentativas excedido após ${processingTime} segundos`);
+
+  const firstChoice = result.choices?.[0];
+  if (!firstChoice) {
+    throw new Error('Resposta da API não possui choices válidas');
+  }
+
+  const content =
+    (typeof firstChoice === 'string' ? firstChoice : null) ||
+    firstChoice.message?.content ||
+    firstChoice.content ||
+    firstChoice.text ||
+    firstChoice.response ||
+    (typeof firstChoice === 'object' ? JSON.stringify(firstChoice) : null);
+
+  if (!content || content.trim() === '') {
+    throw new Error('Resposta da API vazia');
+  }
+
+  return content;
 }
 
 // Função para converter RGB para HSV
@@ -1001,6 +858,9 @@ function generateImageHash(buffer: Buffer): string {
     return crypto.createHash('sha256').update(buffer).digest('hex');
 }
 
+// Lock em memória para evitar múltiplas análises simultâneas por usuário
+const userAnalysisLocks = new Set<string>();
+
 // Função principal de análise
 export async function POST(request: Request) {
     const startTime = performance.now();
@@ -1019,83 +879,98 @@ export async function POST(request: Request) {
             );
         }
 
-        const formData = await request.formData();
-        const file = formData.get('file') as File;
-        
-        if (!file) {
+        // BLOQUEIO: impede múltiplas análises simultâneas por usuário
+        const userId = session.user.id;
+        if (userAnalysisLocks.has(userId)) {
             return NextResponse.json(
-                { error: 'Nenhum arquivo enviado' },
-                { status: 400 }
+                { error: 'Já existe uma análise em andamento para este usuário. Aguarde a conclusão.' },
+                { status: 429 }
             );
         }
-
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        userAnalysisLocks.add(userId);
 
         try {
-            // Analisa a imagem
-            analysisResult = await analyzeImageMeaning(buffer);
-            console.log('Análise concluída com sucesso:', analysisResult);
-        } catch (error) {
-            console.error('Erro na análise da imagem:', error);
-            errorMessage = error instanceof Error ? error.message : 'Erro na análise da imagem';
-            // Continua para tentar gerar a resposta mesmo com erro na análise
-        }
+            const formData = await request.formData();
+            const file = formData.get('file') as File;
+            
+            if (!file) {
+                return NextResponse.json(
+                    { error: 'Nenhum arquivo enviado' },
+                    { status: 400 }
+                );
+            }
 
-        try {
-            // Gera a resposta final
+            const bytes = await file.arrayBuffer();
+            const buffer = Buffer.from(bytes);
+
+            try {
+                // Analisa a imagem
+                analysisResult = await analyzeImageMeaning(buffer);
+                console.log('Análise concluída com sucesso:', analysisResult);
+            } catch (error) {
+                console.error('Erro na análise da imagem:', error);
+                errorMessage = error instanceof Error ? error.message : 'Erro na análise da imagem';
+                // Continua para tentar gerar a resposta mesmo com erro na análise
+            }
+
+            try {
+                // Gera a resposta final
+                if (analysisResult) {
+                    const response = await generateResponse(analysisResult);
+                    console.log('Resposta gerada com sucesso:', response);
+                    const endTime = performance.now();
+                    const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+                    
+                    // Salvar no banco de dados
+                    console.log('Salvando análise no banco de dados...');
+                    const transcription = await transcriptionService.create({
+                        userId: session.user.id,
+                        imageUrl: '', // URL da imagem será atualizada depois
+                        text: response,
+                        confidence: 1.0,
+                        status: 'completed'
+                    });
+                    console.log('Análise salva:', transcription);
+                    
+                    return NextResponse.json({
+                        analysis: response,
+                        processingTime: `${processingTime} segundos`,
+                        status: 'success',
+                        id: transcription.id
+                    });
+                }
+            } catch (error) {
+                console.error('Erro na geração da resposta:', error);
+                errorMessage = error instanceof Error ? error.message : 'Erro na geração da resposta';
+                // Continua para retornar o que temos
+            }
+
+            // Se chegou aqui, temos algum erro mas podemos ter uma análise
+            const endTime = performance.now();
+            const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+            
             if (analysisResult) {
-                const response = await generateResponse(analysisResult);
-                console.log('Resposta gerada com sucesso:', response);
-                const endTime = performance.now();
-                const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-                
-                // Salvar no banco de dados
-                console.log('Salvando análise no banco de dados...');
-                const transcription = await transcriptionService.create({
-                    userId: session.user.id,
-                    imageUrl: '', // URL da imagem será atualizada depois
-                    text: response,
-                    confidence: 1.0,
-                    status: 'completed'
-                });
-                console.log('Análise salva:', transcription);
-                
+                // Se temos uma análise, retornamos ela mesmo com erro
+                console.log('Retornando análise parcial:', analysisResult);
                 return NextResponse.json({
-                    analysis: response,
+                    analysis: analysisResult,
                     processingTime: `${processingTime} segundos`,
-                    status: 'success',
-                    id: transcription.id
+                    status: 'partial',
+                    error: errorMessage
                 });
             }
-        } catch (error) {
-            console.error('Erro na geração da resposta:', error);
-            errorMessage = error instanceof Error ? error.message : 'Erro na geração da resposta';
-            // Continua para retornar o que temos
-        }
 
-        // Se chegou aqui, temos algum erro mas podemos ter uma análise
-        const endTime = performance.now();
-        const processingTime = ((endTime - startTime) / 1000).toFixed(2);
-        
-        if (analysisResult) {
-            // Se temos uma análise, retornamos ela mesmo com erro
-            console.log('Retornando análise parcial:', analysisResult);
+            // Se não temos nem análise nem resposta, retornamos o erro
+            console.error('Nenhuma análise disponível, retornando erro:', errorMessage);
             return NextResponse.json({
-                analysis: analysisResult,
+                error: errorMessage || 'Erro desconhecido',
                 processingTime: `${processingTime} segundos`,
-                status: 'partial',
-                error: errorMessage
-            });
-        }
+                status: 'error'
+            }, { status: 500 });
 
-        // Se não temos nem análise nem resposta, retornamos o erro
-        console.error('Nenhuma análise disponível, retornando erro:', errorMessage);
-        return NextResponse.json({
-            error: errorMessage || 'Erro desconhecido',
-            processingTime: `${processingTime} segundos`,
-            status: 'error'
-        }, { status: 500 });
+        } finally {
+            userAnalysisLocks.delete(userId);
+        }
 
     } catch (error) {
         const endTime = performance.now();

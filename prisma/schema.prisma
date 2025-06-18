@@ -48,6 +48,8 @@ model Transcription {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   collectionItems CollectionItem[]
+
+  @@unique([userId, imageUrl, text])
 }
 
 model Collection {

@@ -99,50 +99,6 @@ async function transcribeWithOpenRouter(imageBase64: string): Promise<string> {
   return text.trim();
 }
 
-async function checkCredits(userId: string): Promise<{ canProceed: boolean; nextAvailable?: Date; waitTime?: number }> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  // Verificar limite diário (50 transcrições por dia)
-  const todayTranscriptions = await prisma.transcription.count({
-    where: {
-      userId,
-      createdAt: {
-        gte: today,
-        lt: tomorrow
-      }
-    }
-  });
-
-  if (todayTranscriptions >= 50) {
-    return { canProceed: false };
-  }
-
-  // Verificar delay desde última transcrição
-  const lastTranscription = await prisma.transcription.findFirst({
-    where: { userId },
-    orderBy: { createdAt: 'desc' }
-  });
-
-  if (lastTranscription) {
-    const timeSinceLast = Date.now() - lastTranscription.createdAt.getTime();
-    const delayNeeded = Math.min(MAX_DELAY_MS, Math.max(MIN_DELAY_MS, timeSinceLast));
-    
-    if (timeSinceLast < delayNeeded) {
-      const nextAvailable = new Date(lastTranscription.createdAt.getTime() + delayNeeded);
-      return { 
-        canProceed: false, 
-        nextAvailable,
-        waitTime: delayNeeded - timeSinceLast
-      };
-    }
-  }
-
-  return { canProceed: true };
-}
-
 async function processImageWithTimeout(imageUrl: string): Promise<string> {
   console.log('Iniciando processamento da imagem...');
   
@@ -196,26 +152,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verificar créditos antes de processar
-    const creditCheck = await checkCredits(session.user.id);
-    if (!creditCheck.canProceed) {
-      if (creditCheck.nextAvailable) {
-        return NextResponse.json(
-          { 
-            error: 'Aguarde antes de fazer outra transcrição',
-            nextAvailable: creditCheck.nextAvailable,
-            waitTime: creditCheck.waitTime
-          },
-          { status: 429 }
-        );
-      } else {
-        return NextResponse.json(
-          { error: 'Limite diário de transcrições atingido (50 por dia)' },
-          { status: 429 }
-        );
-      }
-    }
-
+    // Não verifica mais créditos
     console.log('Processando imagem da URL:', url);
     const text = await processImageWithTimeout(url);
     console.log('Texto processado:', text);
@@ -234,7 +171,7 @@ export async function POST(request: Request) {
     const processingTime = ((endTime - startTime) / 1000).toFixed(2);
 
     const response = {
-      analysis: text,
+      transcription: text,
       processingTime: `${processingTime} segundos`,
       status: 'success'
     };

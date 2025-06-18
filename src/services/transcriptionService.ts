@@ -18,6 +18,17 @@ export interface UpdateTranscriptionData {
 
 export const transcriptionService = {
   async create(data: CreateTranscriptionData) {
+    // Verifica se já existe uma transcrição para o usuário e a mesma imagem (independente do texto)
+    const existing = await prisma.transcription.findFirst({
+      where: {
+        userId: data.userId,
+        imageUrl: data.imageUrl,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing) {
+      return existing;
+    }
     return prisma.transcription.create({
       data: {
         ...data,
