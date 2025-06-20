@@ -16,11 +16,12 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        const isAuthPage = req.nextUrl.pathname.startsWith('/login') || 
-                          req.nextUrl.pathname.startsWith('/register');
+        // Páginas que não precisam de autenticação
+        const publicPages = ['/login', '/register', '/'];
+        const isPublicPage = publicPages.some(page => req.nextUrl.pathname.startsWith(page));
         
-        // Se for página de auth, sempre permitir acesso
-        if (isAuthPage) {
+        // Se for página pública, sempre permitir acesso
+        if (isPublicPage) {
           return true;
         }
         
