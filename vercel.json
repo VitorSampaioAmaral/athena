@@ -1,6 +1,6 @@
 {
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": "nextjs",
   "functions": {
     "src/app/api/**/*.ts": {
