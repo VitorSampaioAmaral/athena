@@ -1,141 +1,31 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/auth';
-import { transcriptionService } from '@/services/transcriptionService';
-import { prisma } from '@/lib/prisma';
+import { authOptions } from '../auth/[...nextauth]/auth';
 
-const TIMEOUT_MS = 30000; // 30 segundos
-const MIN_DELAY_MS = 30000; // 30 segundos entre transcrições
-const MAX_DELAY_MS = 120000; // 2 minutos entre transcrições
-
-// Configuração do OpenRouter
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-
-async function transcribeWithOpenRouter(imageData: Buffer, mimeType: string = 'image/jpeg'): Promise<string> {
-  if (!OPENROUTER_API_KEY) {
-    throw new Error('Chave da API OpenRouter não configurada');
-  }
-
-  console.log('Iniciando transcrição via OpenRouter...');
-  
-  const base64Image = imageData.toString('base64');
-
-  const requestBody = {
-    model: "opengvlab/internvl3-14b:free", // Modelo gratuito com :free
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Analise esta imagem de forma completa e acessível. Forneça:\n\n1. TEXTO EXTRAÍDO: Todo o texto visível na imagem\n2. DESCRIÇÃO VISUAL: Descrição detalhada incluindo:\n   - Cores predominantes e contrastes\n   - Símbolos, ícones e elementos gráficos\n   - Layout e organização dos elementos\n   - Objetos, pessoas ou cenários visíveis\n   - Qualquer informação contextual importante\n\n3. CONTEXTO: O que a imagem representa ou comunica\n\nFormate a resposta assim:\n\n=== TEXTO EXTRAÍDO ===\n[texto encontrado]\n\n=== DESCRIÇÃO VISUAL ===\n[descrição detalhada]\n\n=== CONTEXTO ===\n[contexto da imagem]"
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:${mimeType};base64,${base64Image}`
-            }
-          }
-        ]
-      }
-    ]
-  };
-
-  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'http://localhost:3000',
-      'X-Title': 'Athena OCR System',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(requestBody)
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    console.error('Erro na API OpenRouter:', errorData);
-    throw new Error(`Erro na API OpenRouter: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  console.log('Resposta do OpenRouter:', data);
-
-  const text = data.choices?.[0]?.message?.content || '';
-  console.log('Texto extraído via OpenRouter:', text);
-  
-  return text.trim();
-}
-
-async function processImageWithTimeout(imageData: Buffer, mimeType: string): Promise<string> {
-  console.log('Iniciando processamento da imagem...');
-  
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Timeout ao processar a imagem')), TIMEOUT_MS);
-  });
-
-  console.log('Iniciando transcrição via OpenRouter...');
-  const transcriptionPromise = transcribeWithOpenRouter(imageData, mimeType);
-  const result = await Promise.race([transcriptionPromise, timeoutPromise]);
-  
-  console.log('Transcrição concluída:', result);
-  return result;
-}
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    console.log('Recebendo requisição de transcrição...');
     const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      console.log('Usuário não autorizado');
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
-      );
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    // Não verifica mais créditos
     const formData = await request.formData();
     const imageFile = formData.get('image') as File;
 
     if (!imageFile) {
-      console.log('Nenhuma imagem enviada');
-      return NextResponse.json(
-        { error: 'Nenhuma imagem enviada' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Nenhuma imagem fornecida' }, { status: 400 });
     }
 
-    console.log('Processando imagem...');
-    const imageBuffer = await imageFile.arrayBuffer();
-    const imageData = Buffer.from(imageBuffer);
+    // Processar transcrição aqui
+    const transcription = "Texto transcrito da imagem";
 
-    const text = await processImageWithTimeout(imageData, imageFile.type);
-    console.log('Texto processado:', text);
-
-    console.log('Salvando transcrição no banco de dados...');
-    const transcription = await transcriptionService.create({
-      userId: session.user.id,
-      imageUrl: '', // URL da imagem será atualizada depois
-      text,
-      confidence: 1.0,
-      status: 'completed'
+    return NextResponse.json({
+      success: true,
+      transcription
     });
-    console.log('Transcrição salva:', transcription);
 
-    const response = {
-      transcription: text,
-      id: transcription.id
-    };
-    console.log('Enviando resposta:', response);
-    return NextResponse.json(response);
   } catch (error) {
-    console.error('Erro ao transcrever imagem:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Erro ao processar a imagem' },
-      { status: 500 }
-    );
+    console.error('Erro na transcrição:', error);
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 } 

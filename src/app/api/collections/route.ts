@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
     const data = await request.json()
     const collection = await collectionService.create({
-      userId: session.user.id,
+      userId: session.user.email,
       name: data.name,
       description: data.description,
     })
@@ -52,14 +52,14 @@ export async function GET(request: Request) {
     }
     
     // Listar coleções do usuário
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
       )
     }
 
-    const collections = await collectionService.getByUserId(session.user.id)
+    const collections = await collectionService.getByUserId(session.user.email)
     return NextResponse.json(collections)
   } catch (error) {
     console.error('Erro ao buscar coleções:', error)

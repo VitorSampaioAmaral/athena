@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -12,59 +14,34 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setIsLoading(true);
 
     try {
-      if (isLogin) {
-        // Login
-        const result = await signIn('credentials', {
-          redirect: false,
-          email,
-          password,
-        });
+      const response = await fetch(`/api/auth/${isLogin ? 'login' : 'register'}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, name: isLogin ? undefined : name }),
+      });
 
-        if (result?.error) {
-          setError('Email ou senha inválidos');
-        } else {
-          onSuccess();
-          onClose();
-        }
-      } else {
-        // Registro
-        const response = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password }),
-        });
+      const data = await response.json();
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          setError(data.error || 'Erro ao criar conta');
-        } else {
-          // Faz login automático após o registro
-          const loginResult = await signIn('credentials', {
-            redirect: false,
-            email,
-            password,
-          });
-
-          if (loginResult?.error) {
-            setError('Erro ao fazer login automático');
-          } else {
-            onSuccess();
-            onClose();
-          }
-        }
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro na autenticação');
       }
+
+      // Fechar modal e redirecionar
+      onClose();
+      router.refresh();
     } catch (error) {
-      setError('Ocorreu um erro. Tente novamente.');
+      console.error('Erro na autenticação:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro na autenticação');
     } finally {
       setIsLoading(false);
     }
@@ -143,10 +120,6 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
               required
             />
           </div>
-
-          {error && (
-            <p className="text-red-500 text-sm">{error}</p>
-          )}
 
           <button
             type="submit"

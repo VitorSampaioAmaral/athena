@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -30,34 +30,15 @@ interface Collection {
   }>;
 }
 
-export default function CollectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { data: session, status } = useSession();
+export default function Page({ params }: { params: { id: string } }) {
+  const { status } = useSession();
   const router = useRouter();
   const [collection, setCollection] = useState<Collection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [collectionId, setCollectionId] = useState<string>('');
 
-  useEffect(() => {
-    const getParams = async () => {
-      const resolvedParams = await params;
-      setCollectionId(resolvedParams.id);
-    };
-    getParams();
-  }, [params]);
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    } else if (status === 'authenticated' && collectionId) {
-      fetchCollection();
-    }
-  }, [status, router, collectionId]);
-
-  const fetchCollection = async () => {
-    if (!collectionId) return;
-    
+  const fetchCollection = useCallback(async () => {
     try {
-      const response = await fetch(`/api/collections/${collectionId}`);
+      const response = await fetch(`/api/collections/${params.id}`);
       if (!response.ok) throw new Error('Erro ao buscar coleção');
       const data = await response.json();
       setCollection(data);
@@ -67,7 +48,15 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (status === 'authenticated') {
+      fetchCollection();
+    }
+  }, [status, router, fetchCollection]);
 
   const handleCopyAccessId = async () => {
     if (!collection) return;
@@ -85,7 +74,7 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
     if (!confirm('Tem certeza que deseja remover esta transcrição da coleção?')) return;
 
     try {
-      const response = await fetch(`/api/collections/${collectionId}/remove-transcription`, {
+      const response = await fetch(`/api/collections/${params.id}/remove-transcription`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

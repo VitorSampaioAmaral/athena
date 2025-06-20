@@ -11,7 +11,7 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -30,7 +30,7 @@ export async function DELETE(
 
     // Verificar se a coleção pertence ao usuário
     const collection = await collectionService.getById(id)
-    if (!collection || collection.userId !== session.user.id) {
+    if (!collection || collection.userId !== session.user.email) {
       return NextResponse.json(
         { error: 'Coleção não encontrada ou não autorizada' },
         { status: 404 }

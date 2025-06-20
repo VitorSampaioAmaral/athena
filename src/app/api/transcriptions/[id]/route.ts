@@ -10,7 +10,7 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -27,7 +27,7 @@ export async function GET(
       )
     }
 
-    if (transcription.userId !== session.user.id) {
+    if (transcription.userId !== session.user.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 403 }
@@ -51,7 +51,7 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -68,7 +68,7 @@ export async function PATCH(
       )
     }
 
-    if (transcription.userId !== session.user.id) {
+    if (transcription.userId !== session.user.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 403 }
@@ -95,7 +95,7 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -112,7 +112,7 @@ export async function DELETE(
       )
     }
 
-    if (transcription.userId !== session.user.id) {
+    if (transcription.userId !== session.user.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 403 }

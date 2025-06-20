@@ -35,7 +35,7 @@ function cleanupInactiveClients() {
 setInterval(cleanupInactiveClients, CLEANUP_INTERVAL);
 
 // Função para enviar mensagem para todos os clientes
-export function broadcastProgress(data: any) {
+function broadcastProgress(data: any) {
     const message = `data: ${JSON.stringify(data)}\n\n`;
     const encodedMessage = encoder.encode(message);
     const now = Date.now();

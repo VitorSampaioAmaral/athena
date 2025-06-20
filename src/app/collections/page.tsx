@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { ImportCollectionModal } from '@/components/ImportCollectionModal';
@@ -13,21 +13,11 @@ interface Collection {
   description?: string;
   accessId: string;
   createdAt: string;
-  items: Array<{
-    id: string;
-    transcription: {
-      id: string;
-      imageUrl: string;
-      text: string;
-      confidence: number;
-      status: string;
-      createdAt: string;
-    };
-  }>;
+  items: any[];
 }
 
 export default function CollectionsPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     // Verificar se o usuário já tem uma coleção com o mesmo nome
     const existingCollection = await prisma.collection.findFirst({
       where: {
-        userId: session.user.id,
+        userId: session.user.email,
         name: originalCollection.name
       }
     })
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       let counter = 1
       while (await prisma.collection.findFirst({
         where: {
-          userId: session.user.id,
+          userId: session.user.email,
           name: `${originalCollection.name} (${counter})`
         }
       })) {
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
 
     // Criar uma nova coleção para o usuário atual
     const newCollection = await collectionService.create({
-      userId: session.user.id,
+      userId: session.user.email,
       name: collectionName,
       description: originalCollection.description || undefined,
     })
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
         // Verificar se a transcrição já existe para este usuário
         const existingTranscription = await prisma.transcription.findFirst({
           where: {
-            userId: session.user.id,
+            userId: session.user.email,
             imageUrl: item.transcription.imageUrl
           }
         })
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         if (!existingTranscription) {
           const newTranscription = await prisma.transcription.create({
             data: {
-              userId: session.user.id,
+              userId: session.user.email,
               imageUrl: item.transcription.imageUrl,
               text: item.transcription.text,
               confidence: item.transcription.confidence,

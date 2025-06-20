@@ -17,7 +17,7 @@ interface Transcription {
 }
 
 export default function TranscricoesPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
   const [isLoading, setIsLoading] = useState(true);

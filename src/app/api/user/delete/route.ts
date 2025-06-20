@@ -10,17 +10,22 @@ export async function DELETE() {
       return new NextResponse('Não autorizado', { status: 401 });
     }
 
+    const userId = session.user.id;
+    if (!userId) {
+      return new NextResponse('Não autorizado', { status: 401 });
+    }
+
     // Primeiro, exclui todas as transcrições do usuário
     await prisma.transcription.deleteMany({
       where: {
-        userId: session.user.id,
+        userId,
       },
     });
 
     // Depois, exclui o usuário
     await prisma.user.delete({
       where: {
-        id: session.user.id,
+        id: userId,
       },
     });
 

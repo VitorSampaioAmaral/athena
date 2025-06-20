@@ -83,10 +83,19 @@ export async function POST(request: Request) {
     // Log de registro bem-sucedido
     securityLogger.logRegister(user.id, user.email, ip, userAgent);
 
-    // Remove a senha do objeto de retorno
-    const { password: _, ...userWithoutPassword } = user
+    // Retornar dados do usuário (sem senha)
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
 
-    return NextResponse.json(userWithoutPassword)
+    return NextResponse.json({
+      success: true,
+      user: userResponse
+    });
   } catch (error) {
     console.error('Erro ao registrar usuário:', error)
     securityLogger.logFailedRegister('unknown', ip, 'server_error', userAgent);

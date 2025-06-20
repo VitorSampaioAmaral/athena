@@ -2,14 +2,22 @@ import { prisma } from '@/lib/prisma'
 
 export interface TranscriptionCreateInput {
   text: string
-  imageUrl?: string
+  imageUrl: string
   userId: string
+  confidence?: number
+  status?: string
 }
 
 export class TranscriptionService {
   static async create(data: TranscriptionCreateInput) {
     const transcription = await prisma.transcription.create({
-      data,
+      data: {
+        text: data.text,
+        imageUrl: data.imageUrl,
+        userId: data.userId,
+        confidence: data.confidence ?? 0,
+        status: data.status ?? 'completed'
+      },
       include: {
         user: {
           select: {

@@ -1,0 +1,49 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup Prisma
+      run: npx prisma generate
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Clean and build application
+      run: npm run build:clean
+      env:
+        NODE_ENV: production
+        # Variáveis de ambiente necessárias para o build
+        DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy' }}
+        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'dummy-secret-key-for-build-only' }}
+        NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL || 'http://localhost:3000' }}
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY || 'dummy-key' }}
+        SECURITY_HEADERS_ENABLED: 'true'
+        RATE_LIMIT_ENABLED: 'true'
+        SECURITY_LOGGING_ENABLED: 'true'
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files
+        path: .next/ 

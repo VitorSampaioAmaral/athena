@@ -1,5 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ServerLog, serverEvents } from '@/utils/serverEvents';
+import { serverEvents } from '@/utils/serverEvents';
+
+interface ServerLog {
+  type: string;
+  message: string;
+  timestamp: number;
+  details?: any;
+}
 
 interface ServerLogsProps {
   onStatusChange?: (status: {

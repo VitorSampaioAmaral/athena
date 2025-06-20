@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { toast } from 'react-hot-toast'
 
 interface ImportCollectionModalProps {
   onCollectionImported: () => void
@@ -50,21 +51,21 @@ export function ImportCollectionModal({ onCollectionImported }: ImportCollection
         body: JSON.stringify({ accessId }),
       })
 
+      const data: { success: boolean; error?: string } = await response.json()
+
       if (!response.ok) {
-        throw new Error('Erro ao importar coleção')
+        throw new Error(data.error || 'Erro ao importar coleção')
       }
 
-      const importedCollection = await response.json()
-      
       setOpen(false)
       setCollection(null)
       setAccessId('')
       onCollectionImported()
       
-      alert(`Coleção "${importedCollection.name}" importada com sucesso!`)
+      toast.success('Coleção importada com sucesso!')
     } catch (error) {
-      console.error('Erro:', error)
-      alert('Erro ao importar coleção. Tente novamente.')
+      console.error('Erro ao importar coleção:', error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao importar coleção')
     } finally {
       setImporting(false)
     }

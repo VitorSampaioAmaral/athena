@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     try {
         const session = await getServerSession();
 
-        if (!session?.user?.id) {
+        if (!session?.user?.email) {
             return NextResponse.json(
                 { error: 'Não autorizado' },
                 { status: 401 }
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
         const analysis = await prisma.analysis.create({
             data: {
-                userId: session.user.id,
+                userId: session.user.email,
                 imageUrl,
                 result
             }

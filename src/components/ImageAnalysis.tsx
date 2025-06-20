@@ -102,7 +102,7 @@ export function ImageAnalysis({ imageData, onDone }: { imageData: string; onDone
     if (imageData && isAuthenticated && user) {
       analyzeImage();
     }
-  }, [imageData, isAuthenticated, user, onDone]);
+  }, [imageData, isAuthenticated, user, onDone, startProgress, updateProgress]);
 
   if (!isAuthenticated || !user) {
     return (
