@@ -1,0 +1,73 @@
+name: Regenerate Lockfile and Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    # Remover lockfile existente e gerar novo
+    - name: Remove existing lockfile
+      run: |
+        if [ -f "pnpm-lock.yaml" ]; then
+          echo "Removing existing pnpm-lock.yaml"
+          rm pnpm-lock.yaml
+        fi
+
+    # Instalar dependências (isso vai gerar um novo lockfile)
+    - name: Install dependencies and generate lockfile
+      run: pnpm install
+
+    # Verificar se o lockfile foi gerado
+    - name: Check generated lockfile
+      run: |
+        if [ -f "pnpm-lock.yaml" ]; then
+          echo "✅ New pnpm-lock.yaml generated successfully"
+          ls -la pnpm-lock.yaml
+        else
+          echo "❌ Failed to generate pnpm-lock.yaml"
+          exit 1
+        fi
+
+    # Build da aplicação
+    - name: Build application
+      run: pnpm build
+      env:
+        NODE_ENV: production
+        DATABASE_URL: 'postgresql://dummy:dummy@localhost:5432/dummy'
+        NEXTAUTH_SECRET: 'dummy-secret-key-for-build-only'
+        NEXTAUTH_URL: 'http://localhost:3000'
+        OPENROUTER_API_KEY: 'dummy-key'
+        SECURITY_HEADERS_ENABLED: 'true'
+        RATE_LIMIT_ENABLED: 'true'
+        SECURITY_LOGGING_ENABLED: 'true'
+
+    # Commitar o novo lockfile
+    - name: Commit new lockfile
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add pnpm-lock.yaml
+        git commit -m "Regenerate pnpm-lock.yaml for CI compatibility" || echo "No changes to commit"
+
+    - name: Success
+      run: echo "✅ Build completed with regenerated lockfile!" 

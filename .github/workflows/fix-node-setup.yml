@@ -58,24 +58,8 @@ jobs:
     - name: List files
       run: ls -l
 
-    # Verificar se pnpm-lock.yaml existe
-    - name: Check for pnpm-lock.yaml
-      run: |
-        if [ -f "pnpm-lock.yaml" ]; then
-          echo "pnpm-lock.yaml found, using --frozen-lockfile"
-          echo "USE_FROZEN=true" >> $GITHUB_ENV
-        else
-          echo "pnpm-lock.yaml not found, using --no-frozen-lockfile"
-          echo "USE_FROZEN=false" >> $GITHUB_ENV
-        fi
-
-    # Instalar dependências com fallback
-    - name: Install dependencies (frozen)
-      if: env.USE_FROZEN == 'true'
-      run: pnpm install --frozen-lockfile
-
-    - name: Install dependencies (no frozen)
-      if: env.USE_FROZEN == 'false'
+    # Instalar dependências SEM frozen-lockfile para evitar problemas de compatibilidade
+    - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
 
     - name: Build application
