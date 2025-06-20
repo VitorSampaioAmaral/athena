@@ -2,7 +2,10 @@ const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
+  trailingSlash: true,
   images: {
+    unoptimized: true,
     domains: ['localhost'],
     remotePatterns: [
       {
@@ -12,7 +15,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverActions: true,
+    serverActions: false,
   },
   webpack: (config) => {
     config.resolve.alias = {
