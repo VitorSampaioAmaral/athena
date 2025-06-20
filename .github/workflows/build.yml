@@ -18,18 +18,17 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        # Desabilitar cache para forçar instalação limpa
-        cache: 'none'
+        cache: 'npm'
 
-    - name: Clear npm cache and remove existing files
+    - name: Clear cache and remove existing files
       run: |
         npm cache clean --force
         rm -rf node_modules
         rm -f package-lock.json
         rm -rf .npm
 
-    - name: Install dependencies
-      run: npm install --force
+    - name: Install dependencies with aggressive flags
+      run: npm install --legacy-peer-deps --force --no-audit --no-fund
 
     - name: Setup Prisma
       run: npx prisma generate
