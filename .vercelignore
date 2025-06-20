@@ -1,0 +1,27 @@
+# Arquivos de desenvolvimento
+.env.local
+.env.development
+.env.test
+
+# Arquivos de documentação
+README.md
+*.md
+
+# Arquivos de backup
+*.backup
+*.bak
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Logs
+*.log
+
+# Arquivos de IDE
+.vscode/
+.idea/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db 

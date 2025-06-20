@@ -11,6 +11,7 @@
     "dev": "next dev",
     "dev:all": "powershell -ExecutionPolicy Bypass -File start-dev.ps1",
     "build": "next build",
+    "postinstall": "prisma generate",
     "build:clean": "if exist .next rmdir /s /q .next && next build",
     "start": "next start",
     "lint": "next lint",

@@ -25,6 +25,7 @@ const nextConfig = {
       '@/types': path.resolve(__dirname, 'src/types'),
       '@/utils': path.resolve(__dirname, 'src/utils'),
     };
+    
     return config;
   },
   // Configurações para melhorar o build
