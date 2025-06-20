@@ -1,6 +1,14 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 
+// DESABILITADO TEMPORARIAMENTE PARA DEBUG
+export default function middleware(req: any) {
+  console.log(`[MIDDLEWARE] ${req.method} ${req.nextUrl.pathname} - DESABILITADO`);
+  return NextResponse.next();
+}
+
+// CÓDIGO ORIGINAL COMENTADO
+/*
 export default withAuth(
   function middleware(req) {
     // Log de acesso para páginas protegidas
@@ -39,6 +47,7 @@ export default withAuth(
     },
   }
 );
+*/
 
 export const config = {
   matcher: [
