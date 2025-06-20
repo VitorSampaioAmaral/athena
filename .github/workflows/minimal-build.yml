@@ -1,0 +1,47 @@
+name: Minimal Build (No setup-node)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Usar apenas pnpm, sem setup-node para evitar o erro
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        run_install: false
+
+    # Instalar Node.js manualmente se necessário
+    - name: Install Node.js manually
+      run: |
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build application
+      run: pnpm build
+      env:
+        NODE_ENV: production
+        DATABASE_URL: 'postgresql://dummy:dummy@localhost:5432/dummy'
+        NEXTAUTH_SECRET: 'dummy-secret-key-for-build-only'
+        NEXTAUTH_URL: 'http://localhost:3000'
+        OPENROUTER_API_KEY: 'dummy-key'
+        SECURITY_HEADERS_ENABLED: 'true'
+        RATE_LIMIT_ENABLED: 'true'
+        SECURITY_LOGGING_ENABLED: 'true'
+
+    - name: Success
+      run: echo "✅ Minimal build completed successfully!" 

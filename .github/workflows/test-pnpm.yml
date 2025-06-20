@@ -1,0 +1,44 @@
+name: Test pnpm Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build application
+      run: pnpm build
+      env:
+        NODE_ENV: production
+        DATABASE_URL: 'postgresql://dummy:dummy@localhost:5432/dummy'
+        NEXTAUTH_SECRET: 'dummy-secret-key-for-build-only'
+        NEXTAUTH_URL: 'http://localhost:3000'
+        OPENROUTER_API_KEY: 'dummy-key'
+        SECURITY_HEADERS_ENABLED: 'true'
+        RATE_LIMIT_ENABLED: 'true'
+        SECURITY_LOGGING_ENABLED: 'true'
+
+    - name: Build success
+      run: echo "✅ Build completed successfully!" 

@@ -2,6 +2,11 @@
   "name": "athena",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@8.15.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:all": "powershell -ExecutionPolicy Bypass -File start-dev.ps1",

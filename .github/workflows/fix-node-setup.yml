@@ -1,0 +1,71 @@
+name: Fix Node Setup Issue
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Configurar pnpm ANTES do setup-node para evitar conflitos
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+
+    # Setup Node.js SEM cache automático para evitar o erro
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        # NÃO usar cache automático aqui para evitar conflitos
+
+    # Cache manual do pnpm
+    - name: Get pnpm store directory
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+    - name: Setup pnpm cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    # Cache do Next.js
+    - name: Setup Next.js cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          .next/cache
+        key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+        restore-keys: |
+          ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build application
+      run: pnpm build
+      env:
+        NODE_ENV: production
+        DATABASE_URL: 'postgresql://dummy:dummy@localhost:5432/dummy'
+        NEXTAUTH_SECRET: 'dummy-secret-key-for-build-only'
+        NEXTAUTH_URL: 'http://localhost:3000'
+        OPENROUTER_API_KEY: 'dummy-key'
+        SECURITY_HEADERS_ENABLED: 'true'
+        RATE_LIMIT_ENABLED: 'true'
+        SECURITY_LOGGING_ENABLED: 'true'
+
+    - name: Success
+      run: echo "✅ Build completed successfully without setup-node cache issues!" 
