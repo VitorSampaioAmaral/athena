@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,63 +8,63 @@ datasource db {
 }
 
 model User {
-  id                  String         @id @default(cuid())
-  name                String?
-  email               String         @unique
-  password            String
-  notificationsEnabled Boolean        @default(false)
-  analyses            Analysis[]
-  transcriptions      Transcription[]
-  collections         Collection[]
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  id                   String          @id @default(cuid())
+  name                 String?
+  email                String          @unique
+  password             String
+  notificationsEnabled Boolean         @default(false)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  analyses             Analysis[]
+  collections          Collection[]
+  transcriptions       Transcription[]
 }
 
 model Analysis {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  imageUrl    String
-  result      String    @db.Text
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  imageUrl  String
+  result    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Transcription {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  imageUrl    String
-  text        String   @db.Text
-  confidence  Float    // nível de confiança da transcrição (0-1)
-  status      String   // 'pending', 'processing', 'completed', 'error'
-  error       String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String           @id @default(cuid())
+  userId          String
+  imageUrl        String
+  text            String
+  confidence      Float
+  status          String
+  error           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   collectionItems CollectionItem[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, imageUrl, text])
 }
 
 model Collection {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
-  description String?  @db.Text
-  accessId    String   @unique // ID de 32 caracteres para acesso compartilhado
+  description String?
+  accessId    String           @unique
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   items       CollectionItem[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model CollectionItem {
-  id             String       @id @default(cuid())
-  collectionId   String
-  collection     Collection   @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  collectionId    String
   transcriptionId String
-  transcription  Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
+  createdAt       DateTime      @default(now())
+  collection      Collection    @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  transcription   Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
 
   @@unique([collectionId, transcriptionId])
 }
