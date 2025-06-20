@@ -20,8 +20,16 @@ jobs:
         node-version: '18'
         cache: 'npm'
 
+    - name: Clear npm cache
+      run: npm cache clean --force
+
+    - name: Remove existing node_modules and package-lock.json
+      run: |
+        rm -rf node_modules
+        rm -f package-lock.json
+
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --legacy-peer-deps
 
     - name: Setup Prisma
       run: npx prisma generate
@@ -29,8 +37,8 @@ jobs:
     - name: Run linting
       run: npm run lint
 
-    - name: Clean and build application
-      run: npm run build:clean
+    - name: Build application
+      run: npm run build
       env:
         NODE_ENV: production
         # Variáveis de ambiente necessárias para o build
