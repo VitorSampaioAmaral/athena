@@ -101,10 +101,11 @@ jobs:
         run: |
           rm -rf src/app/api
           echo "API routes removed for static export"
-      - name: Remove dynamic pages for static export
+      - name: Remove dynamic routes for static export
         run: |
           rm -rf src/app/collections/[id]
-          echo "Dynamic pages removed for static export"
+          rm -rf src/app/extract-colors-sharp
+          echo "Dynamic routes removed for static export"
       - name: Build with Next.js
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
       - name: Create .nojekyll file
