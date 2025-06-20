@@ -18,26 +18,30 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
 
     - name: Clear cache and remove existing files
       run: |
-        npm cache clean --force
+        pnpm store prune
         rm -rf node_modules
         rm -f package-lock.json
-        rm -rf .npm
+        rm -f pnpm-lock.yaml
 
-    - name: Install dependencies with aggressive flags
-      run: npm install --legacy-peer-deps --force --no-audit --no-fund
+    - name: Install dependencies with pnpm
+      run: pnpm install --frozen-lockfile
 
     - name: Setup Prisma
       run: npx prisma generate
 
     - name: Run linting
-      run: npm run lint
+      run: pnpm lint
 
     - name: Build application
-      run: npm run build
+      run: pnpm build
       env:
         NODE_ENV: production
         # Variáveis de ambiente necessárias para o build
