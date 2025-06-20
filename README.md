@@ -1,6 +1,6 @@
 ## Athena - Transcrição Inteligente de Imagens
 
-Esta página web oferece uma ferramenta de transcrição inteligente de imagens acessível para pessoas cegas e com baixa visão. Ela permite converter imagens de texto em formato digital, facilitando a leitura e o acesso à informação.
+Essa página web oferece uma ferramenta de transcrição inteligente de imagens acessível para pessoas cegas e com baixa visão. Ela permite converter imagens de texto em formato digital, facilitando a leitura e o acesso à informação.
 
 ### Recursos de Acessibilidade
 
