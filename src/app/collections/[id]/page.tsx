@@ -6,6 +6,13 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 
+// Função necessária para build estático
+export async function generateStaticParams() {
+  // Para build estático, retornamos um array vazio
+  // As páginas serão geradas dinamicamente no cliente
+  return [];
+}
+
 interface Collection {
   id: string;
   name: string;
