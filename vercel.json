@@ -5,8 +5,7 @@
       "src": "package.json",
       "use": "@vercel/next",
       "config": { 
-        "nodeVersion": "18.x",
-        "distDir": ".next"
+        "nodeVersion": "18.x"
       }
     }
   ],
@@ -14,8 +13,9 @@
     "env": {
       "NODE_VERSION": "18.18.2",
       "PNPM_VERSION": "8.15.0",
-      "ENABLE_PNPM": "true"
+      "ENABLE_PNPM": "true",
+      "DISABLE_PNPM_VERSION_CHECK": "true"
     }
   },
-  "installCommand": "corepack enable && corepack prepare pnpm@8.15.0 --activate && pnpm install --force"
+  "installCommand": "pnpm install --force --no-frozen-lockfile"
 }
