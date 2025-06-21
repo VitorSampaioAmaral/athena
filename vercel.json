@@ -2,14 +2,10 @@
   "version": 2,
   "builds": [
     {
-      "src": "Dockerfile",
-      "use": "@vercel/docker"
+      "src": "package.json",
+      "use": "@vercel/next"
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ]
+  "buildCommand": "pnpm install --force && pnpm run build",
+  "installCommand": "pnpm install --force --no-frozen-lockfile"
 }
