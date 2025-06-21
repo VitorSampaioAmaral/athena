@@ -5,14 +5,17 @@
       "src": "package.json",
       "use": "@vercel/next",
       "config": { 
-        "nodeVersion": "18.x"
+        "nodeVersion": "18.x",
+        "distDir": ".next"
       }
     }
   ],
   "build": {
     "env": {
       "NODE_VERSION": "18.18.2",
-      "PNPM_VERSION": "8.15.0"
+      "PNPM_VERSION": "8.15.0",
+      "ENABLE_PNPM": "true"
     }
-  }
+  },
+  "installCommand": "npm i -g pnpm@8.15.0 && pnpm install --force"
 }
