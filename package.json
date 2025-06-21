@@ -12,7 +12,7 @@
     "dev": "next dev",
     "dev:all": "powershell -ExecutionPolicy Bypass -File start-dev.ps1",
     "build": "next build",
-    "postinstall": "prisma generate",
+    "postinstall": "pnpm install tailwindcss --force && prisma generate",
     "build:clean": "if exist .next rmdir /s /q .next && next build",
     "start": "next start",
     "lint": "next lint",
@@ -69,7 +69,6 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3"
   }
 }

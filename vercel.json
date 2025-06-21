@@ -1,6 +1,6 @@
 {
-  "buildCommand": "pnpm run prebuild && pnpm run build",
-  "installCommand": "pnpm install --force",
+  "buildCommand": "chmod +x pre-build.sh && ./pre-build.sh",
+  "installCommand": "pnpm install --force --prod=false",
   "framework": "nextjs",
   "functions": {
     "src/app/api/**/*.ts": {
