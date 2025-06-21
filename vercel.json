@@ -17,5 +17,5 @@
       "ENABLE_PNPM": "true"
     }
   },
-  "installCommand": "npm i -g pnpm@8.15.0 && pnpm install --force"
+  "installCommand": "corepack enable && corepack prepare pnpm@8.15.0 --activate && pnpm install --force"
 }
