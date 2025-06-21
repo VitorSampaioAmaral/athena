@@ -1,3 +1,3 @@
 #!/bin/bash
-pnpm install --force tailwindcss postcss autoprefixer
+pnpm install --force --no-frozen-lockfile tailwindcss postcss autoprefixer
 pnpm run build

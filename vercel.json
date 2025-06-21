@@ -1,6 +1,6 @@
 {
-  "buildCommand": "chmod +x pre-build.sh && ./pre-build.sh",
-  "installCommand": "pnpm install --force --prod=false",
+  "installCommand": "pnpm install --force --no-frozen-lockfile",
+  "buildCommand": "pnpm run build",
   "framework": "nextjs",
   "functions": {
     "src/app/api/**/*.ts": {
