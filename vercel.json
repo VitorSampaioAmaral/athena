@@ -9,6 +9,10 @@
       }
     }
   ],
-  "buildCommand": "pnpm install --force && pnpm run build",
-  "installCommand": "pnpm install --force --no-frozen-lockfile"
+  "build": {
+    "env": {
+      "NODE_VERSION": "18.18.2",
+      "PNPM_VERSION": "8.15.0"
+    }
+  }
 }
