@@ -8,6 +8,7 @@
     "pnpm": ">=8.0.0"
   },
   "scripts": {
+    "prebuild": "pnpm install --force tailwindcss postcss autoprefixer",
     "dev": "next dev",
     "dev:all": "powershell -ExecutionPolicy Bypass -File start-dev.ps1",
     "build": "next build",
@@ -18,6 +19,7 @@
     "lint:fix": "next lint --fix"
   },
   "dependencies": {
+    "tailwindcss": "^3.4.17",
     "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.1.1",
     "@prisma/client": "^6.10.0",
