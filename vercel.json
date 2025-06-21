@@ -1,6 +1,6 @@
 {
-  "buildCommand": "pnpm build",
-  "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm run build",
+  "installCommand": "pnpm install --force",
   "framework": "nextjs",
   "functions": {
     "src/app/api/**/*.ts": {
@@ -9,5 +9,19 @@
   },
   "env": {
     "NODE_ENV": "production"
-  }
-} 
+  },
+  "cleanUrls": true,
+  "regions": ["gru1"],
+  "builds": [
+    {
+      "src": "next.config.js",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ]
+}
