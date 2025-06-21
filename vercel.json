@@ -11,17 +11,5 @@
     "NODE_ENV": "production"
   },
   "cleanUrls": true,
-  "regions": ["gru1"],
-  "builds": [
-    {
-      "src": "next.config.js",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ]
+  "regions": ["gru1"]
 }
