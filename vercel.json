@@ -1,15 +1,15 @@
 {
-  "installCommand": "pnpm install --force --no-frozen-lockfile",
-  "buildCommand": "pnpm run build",
-  "framework": "nextjs",
-  "functions": {
-    "src/app/api/**/*.ts": {
-      "maxDuration": 30
+  "version": 2,
+  "builds": [
+    {
+      "src": "Dockerfile",
+      "use": "@vercel/docker"
     }
-  },
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "cleanUrls": true,
-  "regions": ["gru1"]
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ]
 }

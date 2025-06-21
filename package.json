@@ -4,8 +4,8 @@
   "private": true,
   "packageManager": "pnpm@8.15.0",
   "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "node": "18.x",
+    "pnpm": "8.x"
   },
   "scripts": {
     "prebuild": "pnpm install --force tailwindcss postcss autoprefixer",
