@@ -46,7 +46,7 @@ export async function GET() {
       )
     }
 
-    const transcriptions = await transcriptionService.getByUserId(session.user.email)
+    const transcriptions = await transcriptionService.getByUserId(session.user.id)
     return NextResponse.json(transcriptions)
   } catch (error) {
     console.error('Erro ao buscar transcrições:', error)
