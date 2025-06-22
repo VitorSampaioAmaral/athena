@@ -20,8 +20,6 @@
     "lint:fix": "next lint --fix"
   },
   "dependencies": {
-    "autoprefixer": "^10.4.21",
-    "tailwindcss": "^3.4.17",
     "@heroicons/react": "^2.1.1",
     "@prisma/client": "^6.10.0",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -30,6 +28,9 @@
     "@tensorflow-models/coco-ssd": "^2.2.3",
     "@tensorflow/tfjs": "^4.22.0",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^20.19.0",
+    "@types/react": "^18.2.0",
+    "autoprefixer": "^10.4.21",
     "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
@@ -49,11 +50,11 @@
     "react-hot-toast": "^2.5.2",
     "sharp": "^0.34.2",
     "tailwind-merge": "^3.3.0",
-    "typescript-eslint": "^8.34.1",
-    "zustand": "^5.0.5",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
-    "@types/react": "^18.2.0",
-    "@types/node": "^20.19.0"
+    "typescript-eslint": "^8.34.1",
+    "uuid": "^11.1.0",
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
