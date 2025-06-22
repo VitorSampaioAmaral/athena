@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json()
     const transcription = await transcriptionService.create({
-      userId: session.user.email,
+      userId: session.user.id,
       imageUrl: data.imageUrl,
       text: data.text || '',
       confidence: typeof data.confidence === 'number' ? data.confidence : 1.0,
