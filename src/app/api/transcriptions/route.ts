@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       text: data.text || '',
       confidence: typeof data.confidence === 'number' ? data.confidence : 1.0,
       status: 'completed',
+      source: data.source || 'file',
     })
     console.log('[DEBUG] Transcrição criada no POST:', JSON.stringify(transcription, null, 2));
     

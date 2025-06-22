@@ -80,6 +80,7 @@ Responda em um parágrafo curto começando com "Imagem contendo ...".`;
           imageUrl: '', // Não há URL real, pode ser vazio ou gerar um hash/base64
           text: transcription,
           confidence: 1.0,
+          source: 'file', // Indica que veio de upload de arquivo
         }),
       });
       if (saveResponse.ok) {

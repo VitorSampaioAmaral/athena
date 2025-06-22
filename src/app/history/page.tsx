@@ -11,6 +11,7 @@ interface Transcription {
   text: string;
   confidence: number;
   status: string;
+  source: string;
   createdAt: string;
 }
 
@@ -42,6 +43,9 @@ export default function HistoryPage() {
       
       const data = await response.json();
       console.log('[DEBUG] Dados recebidos:', data);
+      console.log('[DEBUG] Tipo dos dados:', typeof data);
+      console.log('[DEBUG] É um array?', Array.isArray(data));
+      console.log('[DEBUG] Tamanho do array:', Array.isArray(data) ? data.length : 'N/A');
       setTranscriptions(data);
     } catch (error) {
       console.error('[DEBUG] Erro completo:', error);
@@ -95,6 +99,9 @@ export default function HistoryPage() {
               <div className="mb-4">
                 <p className="text-sm text-gray-400">
                   {new Date(transcription.createdAt).toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500 mb-2">
+                  Origem: {transcription.source === 'file' ? 'Upload de arquivo' : 'URL'}
                 </p>
                 <p className="mt-2 whitespace-pre-wrap text-white">
                   {transcription.text}

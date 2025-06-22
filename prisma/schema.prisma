@@ -38,12 +38,13 @@ model Transcription {
   confidence      Float
   status          String
   error           String?
+  source          String           @default("file")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   collectionItems CollectionItem[]
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, imageUrl, text])
+  @@unique([userId, imageUrl, text, source])
 }
 
 model Collection {
