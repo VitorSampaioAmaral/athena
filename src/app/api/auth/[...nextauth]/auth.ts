@@ -50,9 +50,20 @@ export const authOptions: NextAuthOptions = {
             return token;
         },
         async session({ session, token }) {
+            console.log('[DEBUG] Session callback - token:', JSON.stringify(token, null, 2));
+            console.log('[DEBUG] Session callback - session antes:', JSON.stringify(session, null, 2));
+            
             if (session.user && token.id) {
                 (session.user as any).id = token.id as string;
+                console.log('[DEBUG] Session callback - ID adicionado:', token.id);
+            } else {
+                console.error('[DEBUG] Session callback - Falha ao adicionar ID:', { 
+                    hasSessionUser: !!session.user, 
+                    hasTokenId: !!token.id 
+                });
             }
+            
+            console.log('[DEBUG] Session callback - session depois:', JSON.stringify(session, null, 2));
             return session;
         },
         async redirect({ url, baseUrl }) {

@@ -42,10 +42,15 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-    console.log('[DEBUG] Sessão no GET:', JSON.stringify(session, null, 2));
+    console.log('[DEBUG] Sessão completa no GET:', JSON.stringify(session, null, 2));
+    console.log('[DEBUG] session.user:', session?.user);
+    console.log('[DEBUG] session.user.id:', session?.user?.id);
+    console.log('[DEBUG] session.user.email:', session?.user?.email);
     
     if (!session?.user?.id) {
       console.error('[DEBUG] Falha na autorização GET: session.user.id está faltando.');
+      console.error('[DEBUG] session.user existe?', !!session?.user);
+      console.error('[DEBUG] session.user.id existe?', !!session?.user?.id);
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
