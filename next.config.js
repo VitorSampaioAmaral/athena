@@ -1,4 +1,6 @@
-export default {
+import path from 'path';
+
+const nextConfig = {
   images: {
     domains: ['localhost'],
     remotePatterns: [
@@ -26,4 +28,6 @@ export default {
   swcMinify: true,
   compress: true,
   poweredByHeader: false,
-}; 
+};
+
+export default nextConfig;
