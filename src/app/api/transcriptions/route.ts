@@ -8,8 +8,10 @@ import { transcriptionService } from '@/services/transcriptionService'
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    console.log('[DEBUG] Sessão no POST:', JSON.stringify(session, null, 2));
     
     if (!session?.user?.id) {
+      console.error('[DEBUG] Falha na autorização POST: session.user.id está faltando.');
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
@@ -24,6 +26,7 @@ export async function POST(request: NextRequest) {
       confidence: typeof data.confidence === 'number' ? data.confidence : 1.0,
       status: 'completed',
     })
+    console.log('[DEBUG] Transcrição criada no POST:', JSON.stringify(transcription, null, 2));
     
     return NextResponse.json(transcription)
   } catch (error) {
@@ -38,15 +41,19 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
+    console.log('[DEBUG] Sessão no GET:', JSON.stringify(session, null, 2));
     
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
+      console.error('[DEBUG] Falha na autorização GET: session.user.id está faltando.');
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
       )
     }
 
+    console.log('[DEBUG] Buscando transcrições para o userId:', session.user.id);
     const transcriptions = await transcriptionService.getByUserId(session.user.id)
+    console.log('[DEBUG] Transcrições encontradas no GET:', JSON.stringify(transcriptions, null, 2));
     return NextResponse.json(transcriptions)
   } catch (error) {
     console.error('Erro ao buscar transcrições:', error)
