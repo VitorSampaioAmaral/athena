@@ -26,7 +26,7 @@ export default function Navigation() {
             {session ? (
               <>
                 <Link
-                  href="/transcricao"
+                  href="/transcribe"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Transcrever
