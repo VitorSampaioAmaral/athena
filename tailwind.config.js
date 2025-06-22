@@ -165,5 +165,7 @@ module.exports = {
       },
     },
   },
-  plugins: [require("@tailwindcss/typography")],
+  plugins: [
+    // '@tailwindcss/typography', // Removido pois não está instalado
+  ],
 } 
