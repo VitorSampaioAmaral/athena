@@ -32,6 +32,12 @@ importers:
       '@types/jsonwebtoken':
         specifier: ^9.0.9
         version: 9.0.10
+      '@types/node':
+        specifier: ^20.19.0
+        version: 20.19.1
+      '@types/react':
+        specifier: ^18.2.0
+        version: 18.3.23
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.6)
@@ -95,6 +101,9 @@ importers:
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
       typescript-eslint:
         specifier: ^8.34.1
         version: 8.34.1(eslint@9.29.0(jiti@2.4.2))(typescript@5.8.3)
@@ -111,12 +120,6 @@ importers:
       '@types/bcryptjs':
         specifier: ^2.4.6
         version: 2.4.6
-      '@types/node':
-        specifier: ^20.19.0
-        version: 20.19.1
-      '@types/react':
-        specifier: ^18.2.0
-        version: 18.3.23
       '@types/react-dom':
         specifier: ^18.2.0
         version: 18.3.7(@types/react@18.3.23)
@@ -135,9 +138,6 @@ importers:
       postcss:
         specifier: ^8.5.6
         version: 8.5.6
-      typescript:
-        specifier: ^5.8.3
-        version: 5.8.3
 
 packages:
 
