@@ -43,14 +43,20 @@ export default function TranscribePage() {
         body: formData,
       });
 
+      console.log('[DEBUG] Resposta da transcrição:', response.status, response.statusText);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[DEBUG] Erro na transcrição:', errorText);
         throw new Error('Erro na transcrição');
       }
 
       const data = await response.json();
+      console.log('[DEBUG] Dados da transcrição recebidos:', data);
       setResult(data);
       toast.success('Transcrição concluída com sucesso!');
     } catch (error) {
+      console.error('[DEBUG] Erro completo na transcrição:', error);
       console.error('Erro na transcrição:', error);
       toast.error('Erro ao processar a imagem');
     } finally {

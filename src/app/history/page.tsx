@@ -30,11 +30,21 @@ export default function HistoryPage() {
 
   const fetchTranscriptions = async () => {
     try {
+      console.log('[DEBUG] Iniciando busca de transcrições...');
       const response = await fetch('/api/transcriptions');
-      if (!response.ok) throw new Error('Erro ao buscar transcrições');
+      console.log('[DEBUG] Resposta da API:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[DEBUG] Erro na resposta:', errorText);
+        throw new Error('Erro ao buscar transcrições');
+      }
+      
       const data = await response.json();
+      console.log('[DEBUG] Dados recebidos:', data);
       setTranscriptions(data);
     } catch (error) {
+      console.error('[DEBUG] Erro completo:', error);
       toast.error('Erro ao carregar histórico');
       console.error(error);
     } finally {
