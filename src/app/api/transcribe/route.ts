@@ -69,8 +69,9 @@ Responda em um parágrafo curto começando com "Imagem contendo ...".`;
     const transcription = data.choices?.[0]?.message?.content || 'Não foi possível transcrever a imagem.';
 
     // Salvar transcrição no banco de dados
+    let newTranscription;
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/transcriptions`, {
+      const saveResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/transcriptions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,13 +82,18 @@ Responda em um parágrafo curto começando com "Imagem contendo ...".`;
           confidence: 1.0,
         }),
       });
+      if (saveResponse.ok) {
+        newTranscription = await saveResponse.json();
+      } else {
+        console.error('Falha ao salvar transcrição:', await saveResponse.text());
+      }
     } catch (e) {
       console.error('Erro ao salvar transcrição no histórico:', e);
     }
 
     return NextResponse.json({
-      success: true,
-      transcription
+      transcription: transcription,
+      id: newTranscription?.id // Retorna o ID da transcrição salva
     });
 
   } catch (error) {
