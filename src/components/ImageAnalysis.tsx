@@ -51,7 +51,7 @@ export function ImageAnalysis({ imageData, onDone }: { imageData: string; onDone
 
         // Cria FormData e adiciona o arquivo
         const formData = new FormData();
-        formData.append('file', blob, 'image.jpg');
+        formData.append('image', blob, 'image.jpg');
 
         updateProgress(30); // Upload iniciado
 

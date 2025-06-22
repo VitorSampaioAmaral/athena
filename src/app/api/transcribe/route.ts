@@ -68,6 +68,23 @@ Responda em um parágrafo curto começando com "Imagem contendo ...".`;
     // Ajuste conforme a resposta real da API
     const transcription = data.choices?.[0]?.message?.content || 'Não foi possível transcrever a imagem.';
 
+    // Salvar transcrição no banco de dados
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/transcriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageUrl: '', // Não há URL real, pode ser vazio ou gerar um hash/base64
+          text: transcription,
+          confidence: 1.0,
+        }),
+      });
+    } catch (e) {
+      console.error('Erro ao salvar transcrição no histórico:', e);
+    }
+
     return NextResponse.json({
       success: true,
       transcription
