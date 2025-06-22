@@ -325,7 +325,8 @@ export default function ImageUploader() {
           <div className="text-sm text-white whitespace-pre-line">
             {/* Separar as seções usando regex */}
             {(() => {
-              let text = typeof analysisResult === 'string' ? analysisResult : analysisResult.analysis;
+              let text = typeof analysisResult === 'string' ? analysisResult : analysisResult?.analysis;
+              if (typeof text !== 'string') text = '';
               // Remove # e - do início das linhas
               text = text.replace(/^[#\-]+\s?/gm, '');
               const textMatch = text.match(/=+\s*TEXTO EXTRA[IÍ]DO\s*=+\n([\s\S]*?)(?=\n=+\s*DESCRI[CÇ][AÃ]O VISUAL\s*=+|$)/i);

@@ -90,26 +90,24 @@ export default function HistoryPage() {
                   {transcription.text}
                 </p>
               </div>
-              <div className="flex items-center justify-between">
-                <span
-                  className={`rounded-full px-2 py-1 text-xs ${
-                    transcription.status === 'completed'
-                      ? 'bg-green-900 text-green-300'
-                      : transcription.status === 'error'
-                      ? 'bg-red-900 text-red-300'
-                      : 'bg-yellow-900 text-yellow-300'
-                  }`}
-                >
-                  {transcription.status === 'completed'
-                    ? 'Concluído'
+              <span
+                className={`rounded-full px-2 py-1 text-xs ${
+                  transcription.status === 'completed'
+                    ? 'bg-green-900 text-green-300'
                     : transcription.status === 'error'
-                    ? 'Erro'
-                    : 'Processando'}
-                </span>
-                <span className="text-xs text-gray-400">
-                  Confiança: {Math.round(transcription.confidence * 100)}%
-                </span>
-              </div>
+                    ? 'bg-red-900 text-red-300'
+                    : 'bg-yellow-900 text-yellow-300'
+                }`}
+              >
+                {transcription.status === 'completed'
+                  ? 'Concluído'
+                  : transcription.status === 'error'
+                  ? 'Erro'
+                  : 'Processando'}
+              </span>
+              <span className="text-xs text-gray-400">
+                Confiança: {Math.round(transcription.confidence * 100)}%
+              </span>
             </div>
           ))}
         </div>
