@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/auth';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,13 +72,15 @@ Responda em um parágrafo curto começando com "Imagem contendo ...".`;
     // Salvar transcrição no banco de dados
     let newTranscription;
     try {
+      // Gera um UUID para imageUrl se não houver URL real
+      const generatedImageUrl = `upload://${uuidv4()}`;
       const saveResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/transcriptions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          imageUrl: '', // Não há URL real, pode ser vazio ou gerar um hash/base64
+          imageUrl: generatedImageUrl,
           text: transcription,
           confidence: 1.0,
           source: 'file', // Indica que veio de upload de arquivo
