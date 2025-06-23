@@ -29,7 +29,7 @@ export async function GET(
       )
     }
 
-    if (transcription.userId !== session.user.email) {
+    if (transcription.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 403 }
@@ -70,7 +70,7 @@ export async function PATCH(
       )
     }
 
-    if (transcription.userId !== session.user.email) {
+    if (transcription.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 403 }
@@ -114,7 +114,7 @@ export async function DELETE(
       )
     }
 
-    if (transcription.userId !== session.user.email) {
+    if (transcription.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 403 }
