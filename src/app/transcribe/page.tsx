@@ -18,7 +18,6 @@ interface TranscriptionResult {
 export default function TranscribePage() {
   const { status } = useSession();
   const router = useRouter();
-  const [imageUrl, setImageUrl] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<TranscriptionResult | null>(null);
 
@@ -72,39 +71,6 @@ export default function TranscribePage() {
     multiple: false
   });
 
-  const handleUrlTranscription = async () => {
-    if (!imageUrl.trim()) {
-      toast.error('Por favor, insira uma URL válida');
-      return;
-    }
-
-    setIsProcessing(true);
-    setResult(null);
-
-    try {
-      const response = await fetch('/api/transcribe-url', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: imageUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro na transcrição da URL');
-      }
-
-      const data = await response.json();
-      setResult(data);
-      toast.success('Transcrição concluída com sucesso!');
-    } catch (error) {
-      console.error('Erro na transcrição da URL:', error);
-      toast.error('Erro ao processar a URL da imagem');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   if (status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900">
@@ -123,7 +89,7 @@ export default function TranscribePage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Transcrever Imagem</h1>
         <p className="text-gray-300">
-          Faça upload de uma imagem ou forneça uma URL para transcrever o texto contido nela.
+          Faça upload de uma imagem.
         </p>
       </div>
 
@@ -155,31 +121,6 @@ export default function TranscribePage() {
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* URL da imagem */}
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white">URL da Imagem</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Input
-                type="url"
-                placeholder="https://exemplo.com/imagem.jpg"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="bg-gray-700 border-gray-600 text-white"
-              />
-            </div>
-            <Button
-              onClick={handleUrlTranscription}
-              disabled={isProcessing || !imageUrl.trim()}
-              className="w-full"
-            >
-              {isProcessing ? 'Processando...' : 'Transcrever URL'}
-            </Button>
           </CardContent>
         </Card>
       </div>

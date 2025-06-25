@@ -5,8 +5,6 @@ import { useDropzone } from 'react-dropzone';
 import { ImageAnalysis } from '@/components/ImageAnalysis';
 import styles from './ImageUploader.module.css';
 
-type TabType = 'upload' | 'url';
-
 interface AnalysisResponse {
   analysis: string;
   processingTime: string;
@@ -15,9 +13,7 @@ interface AnalysisResponse {
 }
 
 export default function ImageUploader() {
-  const [activeTab, setActiveTab] = useState<TabType>('upload');
   const [imageData, setImageData] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
@@ -48,32 +44,6 @@ export default function ImageUploader() {
 
     setValidationMessage('Arquivo válido!');
     return true;
-  };
-
-  const validateUrl = (url: string): boolean => {
-    try {
-      const urlObj = new URL(url);
-      const validProtocols = ['http:', 'https:'];
-      if (!validProtocols.includes(urlObj.protocol)) {
-        setValidationMessage('URL deve usar HTTP ou HTTPS.');
-        return false;
-      }
-
-      const validExtensions = ['.jpeg', '.jpg', '.png', '.gif', '.webp'];
-      const pathname = urlObj.pathname.toLowerCase();
-      const hasValidExtension = validExtensions.some(ext => pathname.endsWith(ext));
-      
-      if (!hasValidExtension) {
-        setValidationMessage('URL deve apontar para uma imagem (PNG, JPG, GIF ou WEBP).');
-        return false;
-      }
-
-      setValidationMessage('URL válida!');
-      return true;
-    } catch {
-      setValidationMessage('Por favor, insira uma URL válida.');
-      return false;
-    }
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -119,37 +89,6 @@ export default function ImageUploader() {
     }
   }, [isAnalyzing]);
 
-  const handleUrlSubmit = async () => {
-    if (isAnalyzing) return;
-    setIsAnalyzing(true);
-    try {
-      setIsValidating(true);
-      setError(null);
-      setValidationMessage(null);
-
-      if (!imageUrl.trim()) {
-        setValidationMessage('Por favor, insira uma URL.');
-        return;
-      }
-
-      if (!validateUrl(imageUrl)) {
-        return;
-      }
-
-      setIsLoading(true);
-      setImageData(imageUrl);
-      setValidationMessage('URL carregada com sucesso!');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao processar a URL');
-      setValidationMessage(null);
-    } finally {
-      setIsLoading(false);
-      setIsValidating(false);
-      setIsAnalyzing(false);
-      setAnalysisResult(null);
-    }
-  };
-
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
@@ -163,7 +102,6 @@ export default function ImageUploader() {
 
   const handleClear = () => {
     setImageData(null);
-    setImageUrl('');
     setError(null);
     setValidationMessage(null);
     setIsAnalyzing(false);
@@ -179,34 +117,7 @@ export default function ImageUploader() {
 
   return (
     <div className={styles.uploaderContainer}>
-      {/* Abas */}
-      <div className="flex space-x-1 mb-6 bg-gray-800 p-1 rounded-lg">
-        <button
-          onClick={() => setActiveTab('upload')}
-          disabled={isAnalyzing}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'upload'
-              ? 'bg-gray-700 text-white shadow-sm'
-              : 'text-gray-300 hover:text-white'
-          }`}
-        >
-          Upload de Arquivo
-        </button>
-        <button
-          onClick={() => setActiveTab('url')}
-          disabled={isAnalyzing}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-            activeTab === 'url'
-              ? 'bg-gray-700 text-white shadow-sm'
-              : 'text-gray-300 hover:text-white'
-          }`}
-        >
-          URL da Imagem
-        </button>
-      </div>
-
       {/* Conteúdo da aba Upload */}
-      {activeTab === 'upload' && (
       <div
         {...getRootProps()}
         className={`${styles.dropzone} ${
@@ -263,33 +174,6 @@ export default function ImageUploader() {
           </div>
         </div>
       </div>
-      )}
-
-      {/* Conteúdo da aba URL */}
-      {activeTab === 'url' && (
-        <div className="space-y-4">
-          <div className="flex space-x-2">
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://exemplo.com/imagem.jpg"
-              className="flex-1 px-4 py-2 border border-gray-600 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading || isValidating || isAnalyzing}
-            />
-            <button
-              onClick={handleUrlSubmit}
-              disabled={!imageUrl.trim() || isLoading || isValidating || isAnalyzing}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isLoading ? 'Carregando...' : 'Carregar'}
-            </button>
-          </div>
-          <p className="text-sm text-white">
-            Insira a URL de uma imagem
-          </p>
-        </div>
-      )}
 
       {validationMessage && (
         <div className={`${styles.validationMessage} ${
