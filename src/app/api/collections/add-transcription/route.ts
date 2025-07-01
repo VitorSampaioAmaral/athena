@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     // Verificar se a coleção pertence ao usuário
     const collection = await collectionService.getById(collectionId)
-    if (!collection || collection.userId !== session.user.email) {
+    if (!collection || collection.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Coleção não encontrada ou não autorizada' },
         { status: 404 }

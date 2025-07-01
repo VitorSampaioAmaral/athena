@@ -30,7 +30,7 @@ export async function GET(
     }
 
     // Verificar se a coleção pertence ao usuário
-    if (collection.userId !== session.user.email) {
+    if (collection.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 403 }
@@ -64,7 +64,7 @@ export async function DELETE(
 
     // Verificar se a coleção pertence ao usuário
     const collection = await collectionService.getById(id)
-    if (!collection || collection.userId !== session.user.email) {
+    if (!collection || collection.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Coleção não encontrada ou não autorizada' },
         { status: 404 }
@@ -102,7 +102,7 @@ export async function PUT(
 
     // Verificar se a coleção pertence ao usuário
     const collection = await collectionService.getById(id)
-    if (!collection || collection.userId !== session.user.email) {
+    if (!collection || collection.userId !== session.user.id) {
       return NextResponse.json(
         { error: 'Coleção não encontrada ou não autorizada' },
         { status: 404 }

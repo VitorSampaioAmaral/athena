@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     const data = await request.json()
     const collection = await collectionService.create({
-      userId: session.user.email,
+      userId: session.user.id,
       name: data.name,
       description: data.description,
     })
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       )
     }
 
-    const collections = await collectionService.getByUserId(session.user.email)
+    const collections = await collectionService.getByUserId(session.user.id)
     return NextResponse.json(collections)
   } catch (error) {
     console.error('Erro ao buscar coleções:', error)

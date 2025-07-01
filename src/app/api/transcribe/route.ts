@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { transcriptionService } from '@/services/transcriptionService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,7 +46,7 @@ Responda em um parágrafo curto começando com "Imagem contendo ...".`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'opengvlab/internvl3-14b:free',
+        model: 'mistralai/mistral-small-3.2-24b-instruct:free',
         messages: [
           {
             role: 'user',
@@ -63,34 +64,26 @@ Responda em um parágrafo curto começando com "Imagem contendo ...".`;
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || 'Erro na transcrição via OpenRouter');
+      console.error('Erro na resposta da API OpenRouter:', data);
+      throw new Error(data.error || JSON.stringify(data) || 'Erro na transcrição via OpenRouter');
     }
 
     // Ajuste conforme a resposta real da API
     const transcription = data.choices?.[0]?.message?.content || 'Não foi possível transcrever a imagem.';
 
-    // Salvar transcrição no banco de dados
+    // Salvar transcrição no banco de dados diretamente
     let newTranscription;
     try {
-      // Gera um UUID para imageUrl se não houver URL real
       const generatedImageUrl = `upload://${uuidv4()}`;
-      const saveResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/transcriptions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageUrl: generatedImageUrl,
-          text: transcription,
-          confidence: 1.0,
-          source: 'file', // Indica que veio de upload de arquivo
-        }),
+      newTranscription = await transcriptionService.create({
+        userId: session.user.id,
+        imageUrl: generatedImageUrl,
+        text: transcription,
+        confidence: 1.0,
+        status: 'completed',
+        source: 'file',
       });
-      if (saveResponse.ok) {
-        newTranscription = await saveResponse.json();
-      } else {
-        console.error('Falha ao salvar transcrição:', await saveResponse.text());
-      }
+      console.log('[DEBUG] Transcrição criada diretamente:', newTranscription);
     } catch (e) {
       console.error('Erro ao salvar transcrição no histórico:', e);
     }
@@ -101,7 +94,7 @@ Responda em um parágrafo curto começando com "Imagem contendo ...".`;
     });
 
   } catch (error) {
-    console.error('Erro na transcrição:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    console.error('Erro na transcrição:', error instanceof Error ? error.message : JSON.stringify(error), error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : JSON.stringify(error) }, { status: 500 });
   }
 } 
