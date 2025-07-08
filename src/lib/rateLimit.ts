@@ -127,19 +127,19 @@ export function createRateLimiterForRequest(config: RateLimitConfig) {
 
 // Configurações predefinidas
 export const loginRateLimit = createRateLimiterForRequest({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // máximo 5 tentativas
-  message: 'Muitas tentativas de login. Tente novamente em 15 minutos.'
+  windowMs: 1000, // 1 segundo
+  max: 1, // máximo 1 tentativa
+  message: 'Muitas tentativas de login. Tente novamente em 1 segundo.'
 });
 
 export const registerRateLimit = createRateLimiterForRequest({
-  windowMs: 60 * 60 * 1000, // 1 hora
-  max: 3, // máximo 3 tentativas de registro
-  message: 'Muitas tentativas de registro. Tente novamente em 1 hora.'
+  windowMs: 1000, // 1 segundo
+  max: 1, // máximo 1 tentativa de registro
+  message: 'Muitas tentativas de registro. Tente novamente em 1 segundo.'
 });
 
 export const apiRateLimit = createRateLimiterForRequest({
-  windowMs: 60 * 1000, // 1 minuto
-  max: 100, // máximo 100 requisições por minuto
-  message: 'Muitas requisições. Tente novamente em 1 minuto.'
+  windowMs: 1000, // 1 segundo
+  max: 1, // máximo 1 requisição por segundo
+  message: 'Muitas requisições. Tente novamente em 1 segundo.'
 }); 
