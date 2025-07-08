@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
+    console.log('[IMPORT] Sessão do usuário:', session)
     
     if (!session?.user?.email) {
       return NextResponse.json(
@@ -16,6 +17,7 @@ export async function POST(request: Request) {
     }
 
     const { accessId } = await request.json()
+    console.log('[IMPORT] accessId recebido:', accessId)
 
     if (!accessId) {
       return NextResponse.json(
@@ -26,6 +28,7 @@ export async function POST(request: Request) {
 
     // Buscar a coleção original pelo ID de acesso
     const originalCollection = await collectionService.getByAccessId(accessId)
+    console.log('[IMPORT] Coleção original encontrada:', originalCollection)
     
     if (!originalCollection) {
       return NextResponse.json(
@@ -41,6 +44,7 @@ export async function POST(request: Request) {
         name: originalCollection.name
       }
     })
+    console.log('[IMPORT] Coleção existente:', existingCollection)
 
     let collectionName = originalCollection.name
     if (existingCollection) {
@@ -63,10 +67,12 @@ export async function POST(request: Request) {
       name: collectionName,
       description: originalCollection.description || undefined,
     })
+    console.log('[IMPORT] Nova coleção criada:', newCollection)
 
     // Copiar todas as transcrições da coleção original
     if (originalCollection.items && originalCollection.items.length > 0) {
       for (const item of originalCollection.items) {
+        console.log('[IMPORT] Item da coleção:', item)
         // Verificar se a transcrição já existe para este usuário
         const existingTranscription = await prisma.transcription.findFirst({
           where: {
@@ -74,6 +80,7 @@ export async function POST(request: Request) {
             imageUrl: item.transcription.imageUrl
           }
         })
+        console.log('[IMPORT] Transcrição existente:', existingTranscription)
 
         let transcriptionId = existingTranscription?.id
 
@@ -90,6 +97,7 @@ export async function POST(request: Request) {
             }
           })
           transcriptionId = newTranscription.id
+          console.log('[IMPORT] Nova transcrição criada:', newTranscription)
         }
 
         // Adicionar à nova coleção
@@ -98,12 +106,14 @@ export async function POST(request: Request) {
             collectionId: newCollection.id,
             transcriptionId: transcriptionId
           })
+          console.log('[IMPORT] Transcrição adicionada à coleção:', transcriptionId)
         }
       }
     }
 
     // Buscar a coleção completa com os itens
     const importedCollection = await collectionService.getById(newCollection.id)
+    console.log('[IMPORT] Coleção importada final:', importedCollection)
     
     return NextResponse.json(importedCollection)
   } catch (error) {
