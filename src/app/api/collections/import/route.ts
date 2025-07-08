@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     // Verificar se o usuário já tem uma coleção com o mesmo nome
     const existingCollection = await prisma.collection.findFirst({
       where: {
-        userId: session.user.email,
+        userId: session.user.id,
         name: originalCollection.name
       }
     })
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       let counter = 1
       while (await prisma.collection.findFirst({
         where: {
-          userId: session.user.email,
+          userId: session.user.id,
           name: `${originalCollection.name} (${counter})`
         }
       })) {
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     // Criar uma nova coleção para o usuário atual
     const newCollection = await collectionService.create({
-      userId: session.user.email,
+      userId: session.user.id,
       name: collectionName,
       description: originalCollection.description || undefined,
     })
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         // Verificar se a transcrição já existe para este usuário
         const existingTranscription = await prisma.transcription.findFirst({
           where: {
-            userId: session.user.email,
+            userId: session.user.id,
             imageUrl: item.transcription.imageUrl
           }
         })
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
         if (!existingTranscription) {
           const newTranscription = await prisma.transcription.create({
             data: {
-              userId: session.user.email,
+              userId: session.user.id,
               imageUrl: item.transcription.imageUrl,
               text: item.transcription.text,
               confidence: item.transcription.confidence,

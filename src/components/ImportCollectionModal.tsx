@@ -94,6 +94,9 @@ export function ImportCollectionModal({ onCollectionImported }: ImportCollection
         </DialogHeader>
         
         <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded p-3 text-sm">
+            Para importar uma coleção, peça para o dono acessar a página de coleções, clicar em <b>"Copiar ID Completo"</b> e te enviar esse código. Cole o ID abaixo.
+          </div>
           <div>
             <label htmlFor="accessId" className="block text-sm font-medium mb-2">
               ID de Acesso da Coleção

@@ -38,18 +38,18 @@ export async function GET(request: Request) {
     const session = await getServerSession(authOptions)
     const { searchParams } = new URL(request.url)
     const accessId = searchParams.get('accessId')
+    console.log('[GET /api/collections] accessId recebido:', accessId)
     
     if (accessId) {
       // Buscar coleção por ID de acesso (público)
       const collection = await collectionService.getByAccessId(accessId)
-      
+      console.log('[GET /api/collections] Coleção encontrada:', collection)
       if (!collection) {
         return NextResponse.json(
           { error: 'Coleção não encontrada' },
           { status: 404 }
         )
       }
-      
       return NextResponse.json(collection)
     }
     
