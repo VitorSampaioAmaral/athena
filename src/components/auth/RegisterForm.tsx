@@ -7,6 +7,7 @@ export default function RegisterForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,6 +19,7 @@ export default function RegisterForm() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setPasswordError('');
 
     // Validações
     if (formData.password !== formData.confirmPassword) {
@@ -48,7 +50,14 @@ export default function RegisterForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao criar conta');
+        // Se o erro for relacionado à senha, exibe na label
+        if (data.error && data.error.toLowerCase().includes('senha')) {
+          setPasswordError(data.error);
+        } else {
+          setError(data.error || 'Erro ao criar conta');
+        }
+        setIsLoading(false);
+        return;
       }
 
       // Faz login automaticamente após o registro
@@ -121,6 +130,9 @@ export default function RegisterForm() {
       <div>
         <label htmlFor="password" className="block text-sm font-medium text-gray-300">
           Senha
+          {passwordError && (
+            <span className="text-red-400 ml-2">{passwordError}</span>
+          )}
         </label>
         <input
           type="password"
